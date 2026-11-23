@@ -8345,27 +8345,47 @@ function viewConstraintsModal() {
       e("div",{class:"form-label",style:"margin-bottom:10px"},"🚑 השעיה זמנית מהסידור"),
       e("div",{style:"font-size:11px;color:#475569;margin-bottom:10px"},"העובד לא יישובץ בתאריכים אלו (מחלה, חל״ת, וכו׳)")
     ],{style:"margin-bottom:12px"});
-    // Reasonable date limits: anywhere from last year to 2 years ahead. Keeps the native
-    // date picker from scrolling back to 1900 and prevents fat-fingered typos.
-    const _yearNow = new Date().getFullYear();
-    const _dateMin = (_yearNow - 1) + "-01-01";
-    const _dateMax = (_yearNow + 2) + "-12-31";
+    // Date limits: today through 2 years ahead. Picker opens on today when both
+    // inputs are empty, so a stale saved value from a past exclusion doesn't drag
+    // the iOS picker back to that old month.
+    const _todayIso = new Date().toISOString().slice(0,10);
+    const _dateMin = _todayIso;
+    const _dateMax = (new Date().getFullYear() + 2) + "-12-31";
+    // If the previously saved exclusion range already ended, treat it as stale
+    // and present a blank form so the picker opens on today instead of jumping
+    // back half a year to the old value.
+    if (localExcludeTo && localExcludeTo < _todayIso) {
+      localExcludeFrom = null;
+      localExcludeTo = null;
+      localExcludeReason = "";
+    }
+    // Live summary element — a reference we mutate on every input change so the
+    // red "מושעה" banner reflects what the user just typed without waiting for a
+    // full modal rebuild.
+    const _exSummaryEl = e("div",{style:"margin-top:10px;background:#EF444418;border:1px solid #EF444433;border-radius:8px;padding:8px 12px;font-size:12px;color:#FCA5A5;display:none"},"");
+    const _refreshExSummary = () => {
+      if (localExcludeFrom && localExcludeTo) {
+        _exSummaryEl.textContent = "🚑 מושעה: " + fmtDate(localExcludeFrom) + " — " + fmtDate(localExcludeTo) + (localExcludeReason ? " (" + localExcludeReason + ")" : "");
+        _exSummaryEl.style.display = "";
+      } else {
+        _exSummaryEl.textContent = "";
+        _exSummaryEl.style.display = "none";
+      }
+    };
     exCard.appendChild(div("form-row",[
       div("form-col",[
         e("label",{class:"form-label"},"מתאריך"),
-        e("input",{class:"fi",type:"date",min:_dateMin,max:_dateMax,value:localExcludeFrom||"",oninput:ev=>{localExcludeFrom=ev.target.value||null;}})
+        e("input",{class:"fi",type:"date",min:_dateMin,max:_dateMax,value:localExcludeFrom||"",oninput:ev=>{localExcludeFrom=ev.target.value||null;_refreshExSummary();}})
       ]),
       div("form-col",[
         e("label",{class:"form-label"},"עד תאריך"),
-        e("input",{class:"fi",type:"date",min:_dateMin,max:_dateMax,value:localExcludeTo||"",oninput:ev=>{localExcludeTo=ev.target.value||null;}})
+        e("input",{class:"fi",type:"date",min:_dateMin,max:_dateMax,value:localExcludeTo||"",oninput:ev=>{localExcludeTo=ev.target.value||null;_refreshExSummary();}})
       ])
     ]));
     exCard.appendChild(e("input",{class:"fi",placeholder:"סיבה (מחלה, חל״ת...)",value:localExcludeReason,style:"margin-top:8px",
-      oninput:ev=>{localExcludeReason=ev.target.value;}}));
-    if (localExcludeFrom && localExcludeTo) {
-      exCard.appendChild(e("div",{style:"margin-top:10px;background:#EF444418;border:1px solid #EF444433;border-radius:8px;padding:8px 12px;font-size:12px;color:#FCA5A5"},
-        "🚑 מושעה: " + fmtDate(localExcludeFrom) + " — " + fmtDate(localExcludeTo) + (localExcludeReason ? " (" + localExcludeReason + ")" : "")));
-    }
+      oninput:ev=>{localExcludeReason=ev.target.value;_refreshExSummary();}}));
+    exCard.appendChild(_exSummaryEl);
+    _refreshExSummary();
     exCard.appendChild(btn("btn-sm btn-sm-gray","נקה השעיה",()=>{localExcludeFrom=null;localExcludeTo=null;localExcludeReason="";rebuildModal();},{style:"margin-top:8px"}));
     modal.appendChild(exCard);
 
