@@ -1071,7 +1071,10 @@ function friendlyError(err) {
 
 // Minimal password check — just the Supabase built-in 6-char minimum.
 // Strict policy was removed because employees couldn't reset passwords in practice.
-function validatePassword(password) {
+// _opts is reserved for future stricter checks (email-in-password, etc).
+// Kept in the signature so existing callers that pass { email } don't become
+// misleading, but no field is read yet.
+function validatePassword(password, _opts) {
   if (!password) return "נא להזין סיסמה";
   if (password.length < 6) return "סיסמה חייבת להיות לפחות 6 תווים";
   if (password.length > 72) return "סיסמה ארוכה מדי";
@@ -1168,6 +1171,10 @@ function persistOfflineCache() {
       availSubmissions: S.availSubmissions,
       publishedWeeks: Array.from(S.publishedWeeks || []),
       customHours: S.customHours,
+      // SHIFTS / WEEKEND_SHIFTS vary per business (shift_config + savedHours
+      // mutate them at load time), so they belong in the offline snapshot —
+      // otherwise an offline restore falls back to the built-in defaults and
+      // mis-displays businesses that customized their shift set.
       SHIFTS: SHIFTS,
       WEEKEND_SHIFTS: WEEKEND_SHIFTS,
     };
@@ -6232,10 +6239,17 @@ function viewVacations() {
     });
     addCard.appendChild(typeSel);
 
+    // Clamp dates to a sane window: last 30 days (for retroactive sick-day entry)
+    // through 2 years ahead. Prevents the iOS wheel from drifting back to 1950.
+    const _vacMin = (() => {
+      const d = new Date(); d.setDate(d.getDate() - 30);
+      return d.toISOString().slice(0,10);
+    })();
+    const _vacMax = (new Date().getFullYear() + 2) + "-12-31";
     addCard.appendChild(div("form-row",[
       div("form-col",[
         e("label",{class:"form-label"},"מתאריך *"),
-        e("input",{type:"date",class:"fi",value:S.newVac.startDate||"",
+        e("input",{type:"date",class:"fi",min:_vacMin,max:_vacMax,value:S.newVac.startDate||"",
           onchange: ev => {
             S.newVac.startDate = ev.target.value;
             // Auto-fill end date = start date if empty — most vacations are single-day,
@@ -6249,7 +6263,7 @@ function viewVacations() {
       ]),
       div("form-col",[
         e("label",{class:"form-label"},"עד תאריך *"),
-        e("input",{type:"date",class:"fi",value:S.newVac.endDate||"", onchange: ev => { S.newVac.endDate = ev.target.value; render(); }})
+        e("input",{type:"date",class:"fi",min:S.newVac.startDate||_vacMin,max:_vacMax,value:S.newVac.endDate||"", onchange: ev => { S.newVac.endDate = ev.target.value; render(); }})
       ])
     ]));
 
