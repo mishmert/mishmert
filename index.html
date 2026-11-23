@@ -1335,7 +1335,9 @@ function uiAlert(opts) {
 }
 
 function today() {
-  const d = new Date();
+  // Always Israel's today — otherwise a device abroad rolls over at local
+  // midnight, which could be hours off and put "today" on the wrong day.
+  const d = israelNow();
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 function fmtYMD(d) {
@@ -1352,7 +1354,9 @@ function shiftDurationHours(startStr, endStr) {
 }
 // Info (first/last date, ISO range strings, Hebrew label) for the month at `offset` months from now.
 function getMonthInfo(offset=0) {
-  const now = new Date();
+  // Anchor on Israel time so an admin abroad still gets "this month" relative
+  // to their team's calendar, not the device's.
+  const now = israelNow();
   const first = new Date(now.getFullYear(), now.getMonth()+offset, 1);
   const last = new Date(now.getFullYear(), now.getMonth()+offset+1, 0);
   return {
@@ -1363,8 +1367,10 @@ function getMonthInfo(offset=0) {
   };
 }
 function getWeekDates(offset=0) {
-  const d=new Date();
-  const dow=d.getDay(); // 0=Sun
+  // Anchor on Israel's current day — otherwise a device in NY around 3-5pm
+  // local would be on the *previous* Israel day and compute the wrong week.
+  const d=israelNow();
+  const dow=d.getDay(); // 0=Sun (Israel week starts Sunday)
   d.setDate(d.getDate()-dow+offset*7);
   return Array.from({length:7},(_,i)=>{
     const x=new Date(d);
@@ -1375,10 +1381,30 @@ function getWeekDates(offset=0) {
     return y+"-"+m+"-"+dd;
   });
 }
-// By Saturday, "next week" is basically tomorrow, so the block-submission presets
-// bump forward by one: "next week" becomes what used to be "in two weeks", etc.
+// ── Israel-time helpers ──
+// The app runs for Israeli teams on Israel's work week and deadlines — using the
+// device's local clock would misbehave for anyone opening it while abroad (wrong
+// day-of-week preset, wrong greeting, "today" rolling over at local midnight
+// instead of Jerusalem midnight). These helpers always evaluate against
+// Asia/Jerusalem regardless of the device.
+function israelNow() {
+  // toLocaleString(en-US, {timeZone}) re-expresses the instant as wall-clock
+  // text in that zone; parsing that text back gives a Date whose getDay/
+  // getHours etc. match Israel's wall clock.
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+}
+// Today's date in Israel as "YYYY-MM-DD". Uses sv-SE because it formats as
+// YYYY-MM-DD natively — en-US would give "MM/DD/YYYY" which is painful to slice.
+function israelTodayIso() {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jerusalem" });
+}
+function israelYear() { return israelNow().getFullYear(); }
+
+// By Saturday (Jerusalem time), "next week" is basically tomorrow, so the
+// block-submission presets bump forward by one: "next week" becomes what used
+// to be "in two weeks", etc.
 function _blockPresetBase() {
-  return new Date().getDay() === 6 ? 2 : 1;
+  return israelNow().getDay() === 6 ? 2 : 1;
 }
 function fmtDate(d) { return new Date(d+"T00:00:00").toLocaleDateString("he-IL"); }
 // (getEmp defined later as a cached version)
@@ -1410,9 +1436,10 @@ function getNotifiedManagers() {
   return allMgrs;
 }
 
-// Time-based greeting in Hebrew
+// Time-based greeting in Hebrew — use Israel wall-clock so someone opening the
+// app from abroad still gets the greeting that matches their team's day.
 function getTimeBasedGreeting() {
-  const hour = new Date().getHours();
+  const hour = israelNow().getHours();
   if (hour >= 5 && hour < 12) return { text: "בוקר טוב", emoji: "☀️" };       // 05:00 - 11:59
   if (hour >= 12 && hour < 17) return { text: "צהריים טובים", emoji: "🌤️" };  // 12:00 - 16:59
   if (hour >= 17 && hour < 21) return { text: "ערב טוב", emoji: "🌆" };       // 17:00 - 20:59
@@ -4800,10 +4827,12 @@ function viewHome() {
     S._nowCardPreloaded = Date.now();
     (async () => {
       try {
-        const nowDate = new Date();
+        // Israel time: the real current week is Sunday–Saturday in Jerusalem,
+        // not in the device's zone.
+        const nowDate = israelNow();
         const dow = nowDate.getDay();
-        // Find Sunday of the real current week (regardless of S.weekOffset)
-        const sunday = new Date(nowDate.getTime() - dow * 86400000);
+        const sunday = new Date(nowDate);
+        sunday.setDate(sunday.getDate() - dow);
         const sundayStr = sunday.getFullYear()+"-"+String(sunday.getMonth()+1).padStart(2,"0")+"-"+String(sunday.getDate()).padStart(2,"0");
         const { data: sched } = await sb.from("schedules")
           .select("id").eq("business_id", S.profile.business_id)
@@ -4834,9 +4863,11 @@ function viewHome() {
   // Reads from S.schedule for today + yesterday (so a night shift that started
   // yesterday 22:45 and ends today 07:00 is correctly shown as "currently working").
   {
-    const nowDate = new Date();
+    // Israel time: "now" and "today" are the team's local wall-clock, not the device's.
+    const nowDate = israelNow();
     const todayStr = nowDate.getFullYear()+"-"+String(nowDate.getMonth()+1).padStart(2,"0")+"-"+String(nowDate.getDate()).padStart(2,"0");
-    const yesterdayDt = new Date(nowDate.getTime() - 86400000);
+    const yesterdayDt = new Date(nowDate);
+    yesterdayDt.setDate(yesterdayDt.getDate() - 1);
     const yesterdayStr = yesterdayDt.getFullYear()+"-"+String(yesterdayDt.getMonth()+1).padStart(2,"0")+"-"+String(yesterdayDt.getDate()).padStart(2,"0");
     const nowMs = nowDate.getTime();
     const nowHM = nowDate.getHours()*60 + nowDate.getMinutes();
@@ -6242,10 +6273,10 @@ function viewVacations() {
     // Clamp dates to a sane window: last 30 days (for retroactive sick-day entry)
     // through 2 years ahead. Prevents the iOS wheel from drifting back to 1950.
     const _vacMin = (() => {
-      const d = new Date(); d.setDate(d.getDate() - 30);
+      const d = israelNow(); d.setDate(d.getDate() - 30);
       return d.toISOString().slice(0,10);
     })();
-    const _vacMax = (new Date().getFullYear() + 2) + "-12-31";
+    const _vacMax = (israelYear() + 2) + "-12-31";
     addCard.appendChild(div("form-row",[
       div("form-col",[
         e("label",{class:"form-label"},"מתאריך *"),
@@ -7329,10 +7360,12 @@ function viewEmpView() {
     const dlDay = S.business?.deadline_day;
     const dlTime = S.business?.deadline_time || "20:00";
     if (dlDay != null && selfOnly) {
-      const now = new Date();
-      // Find the upcoming deadline (next occurrence of dlDay at dlTime)
+      // Deadline is business-local (Israel). Compare "now" and the upcoming
+      // deadline in Israel's wall clock so an employee abroad sees the correct
+      // countdown — the business's Thursday 20:00, not their device's.
+      const now = israelNow();
       const [dlH, dlM] = dlTime.split(":").map(Number);
-      const upcoming = new Date();
+      const upcoming = israelNow();
       const daysUntil = (parseInt(dlDay) - now.getDay() + 7) % 7;
       upcoming.setDate(now.getDate() + daysUntil);
       upcoming.setHours(dlH||0, dlM||0, 0, 0);
@@ -7925,7 +7958,9 @@ function viewEmpView() {
     // Check deadline — relative to the TARGET week being submitted for.
     const dlDay = S.business?.deadline_day;
     const dlTime = S.business?.deadline_time || "20:00";
-    const now = new Date();
+    // Israel wall-clock — deadline is set by the business and is business-local,
+    // so "past deadline" for a traveler must compare against Jerusalem, not their device.
+    const now = israelNow();
     // The week the employee is currently submitting blocks for:
     const _targetOffsetForDeadline = (S.availTargetOffset !== null && S.availTargetOffset !== undefined) ? S.availTargetOffset : presetBase;
     const _targetWeekDates = getWeekDates(_targetOffsetForDeadline);
@@ -8362,9 +8397,9 @@ function viewConstraintsModal() {
     // Date limits: today through 2 years ahead. Picker opens on today when both
     // inputs are empty, so a stale saved value from a past exclusion doesn't drag
     // the iOS picker back to that old month.
-    const _todayIso = new Date().toISOString().slice(0,10);
+    const _todayIso = israelTodayIso();
     const _dateMin = _todayIso;
-    const _dateMax = (new Date().getFullYear() + 2) + "-12-31";
+    const _dateMax = (israelYear() + 2) + "-12-31";
     // If the previously saved exclusion range already ended, treat it as stale
     // and present a blank form so the picker opens on today instead of jumping
     // back half a year to the old value.
@@ -9633,9 +9668,9 @@ function viewSettings() {
 
   // Reminder to submit blocks
   const remCard = div("card",[e("div",{class:"card-title"},"🔔 תזכורת הגשת חסימות")]);
-  // If the manager sends the reminder on Saturday (end of the week), the "next week"
-  // is probably already scheduled — target the week after that instead.
-  const reminderOffset = (new Date().getDay() === 6) ? 2 : 1;
+  // If the manager sends the reminder on Saturday (end of the week, Israel time),
+  // the "next week" is probably already scheduled — target the week after that instead.
+  const reminderOffset = (israelNow().getDay() === 6) ? 2 : 1;
   remCard.appendChild(e("div",{style:"font-size:12px;color:#64748B;margin-bottom:14px"},
     "שלח תזכורת לעובדים שעדיין לא הגישו חסימות ל" + (reminderOffset===2 ? "שבוע הבא-הבא" : "שבוע הבא")));
   const nextWeekDates2 = getWeekDates(reminderOffset);
@@ -10210,8 +10245,10 @@ async function loadCalendarMonthData(firstStr, lastStr) {
 function viewCalendar() {
   const wrap = e("div");
   if (!S.monthOffset) S.monthOffset = 0;
-  
-  const now = new Date();
+
+  // Israel wall-clock — so "this month" / "today" in the calendar match the
+  // business's calendar, not the device's local.
+  const now = israelNow();
   const viewMonth = now.getMonth() + S.monthOffset;
   const viewYear = now.getFullYear() + Math.floor(viewMonth / 12);
   const actualMonth = ((viewMonth % 12) + 12) % 12;
@@ -11445,9 +11482,11 @@ async function checkAutoReminder() {
   if (!isManager()) return;
   const biz = S.business;
   if (!biz) return;
-  const now = new Date();
+  // Business-local (Israel) — the reminder fires when it's time at the business,
+  // not when it happens to be that time on the admin's device.
+  const now = israelNow();
   const currentTime = String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
-  
+
   // ─── Auto-reminder for blocks submission ───
   if (biz.reminder_day == null) return;
   if (now.getDay() !== biz.reminder_day) return;
