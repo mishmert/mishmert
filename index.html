@@ -1071,10 +1071,7 @@ function friendlyError(err) {
 
 // Minimal password check — just the Supabase built-in 6-char minimum.
 // Strict policy was removed because employees couldn't reset passwords in practice.
-// _opts is reserved for future stricter checks (email-in-password, etc).
-// Kept in the signature so existing callers that pass { email } don't become
-// misleading, but no field is read yet.
-function validatePassword(password, _opts) {
+function validatePassword(password) {
   if (!password) return "נא להזין סיסמה";
   if (password.length < 6) return "סיסמה חייבת להיות לפחות 6 תווים";
   if (password.length > 72) return "סיסמה ארוכה מדי";
@@ -2417,7 +2414,7 @@ function viewPasswordReset() {
   card.appendChild(btn("btn-primary","✓ שמור סיסמה חדשה", async () => {
     const newPass = p1.value;
     const confPass = p2.value;
-    const pwErr = validatePassword(newPass, { email: S.resetUserEmail });
+    const pwErr = validatePassword(newPass);
     if (pwErr) { toast(pwErr, "err"); return; }
     if (newPass !== confPass) { toast("הסיסמאות לא תואמות", "err"); return; }
     try {
@@ -3153,7 +3150,7 @@ async function handleLogin(email, password) {
 // Employees can only join via secure invitation (see handleAcceptInvitation)
 async function handleRegister(name, businessName, email, password, bizInviteToken) {
   if (!bizInviteToken) throw new Error("נדרשת הזמנה תקפה כדי לפתוח עסק חדש");
-  const pwErr = validatePassword(password, { email, name });
+  const pwErr = validatePassword(password);
   if (pwErr) throw new Error(pwErr);
   const {data:auth, error:ae} = await sb.auth.signUp({email,password,options:{data:{name}}});
   if(ae) throw ae;
@@ -3179,7 +3176,7 @@ async function handleRegister(name, businessName, email, password, bizInviteToke
 
 async function handleAcceptInvitation(name, password, token, email) {
   if (!name?.trim()) throw new Error("נא להזין שם");
-  const pwErr = validatePassword(password, { email, name: name.trim() });
+  const pwErr = validatePassword(password);
   if (pwErr) throw new Error(pwErr);
   
   // Sign up the user with the email from the invitation
@@ -6273,8 +6270,11 @@ function viewVacations() {
     // Clamp dates to a sane window: last 30 days (for retroactive sick-day entry)
     // through 2 years ahead. Prevents the iOS wheel from drifting back to 1950.
     const _vacMin = (() => {
+      // Build the ISO string from the Israel-wall-clock Date's own fields —
+      // never via .toISOString(), which reinterprets the Date as UTC and can
+      // round back a day for times near Israel midnight.
       const d = israelNow(); d.setDate(d.getDate() - 30);
-      return d.toISOString().slice(0,10);
+      return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
     })();
     const _vacMax = (israelYear() + 2) + "-12-31";
     addCard.appendChild(div("form-row",[
@@ -7377,7 +7377,10 @@ function viewEmpView() {
         const targetSun = new Date(upcoming);
         targetSun.setDate(targetSun.getDate() + (7 - upcoming.getDay()) % 7);
         if (upcoming.getDay() !== 0) targetSun.setDate(upcoming.getDate() + ((0 - upcoming.getDay() + 7) % 7 || 7));
-        const targetSunStr = targetSun.toISOString().slice(0,10);
+        // Build the ISO string from Israel-local fields — .toISOString() would
+        // reinterpret the Israel-wall-clock Date as UTC and can round to the
+        // previous day for times near midnight, aiming at the wrong week.
+        const targetSunStr = targetSun.getFullYear() + "-" + String(targetSun.getMonth()+1).padStart(2,"0") + "-" + String(targetSun.getDate()).padStart(2,"0");
         const hasSubmitted = (S.availSubmissions || []).some(a =>
           a.employee_id === emp.id && a.week_start === targetSunStr
         );
@@ -9918,7 +9921,7 @@ function viewSettings() {
   passCard.appendChild(btn("btn-add","🔐 שמור סיסמה חדשה",async()=>{
     const newPass = newPassInp.value;
     const confPass = confPassInp.value;
-    const pwErr = validatePassword(newPass, { email: S.user?.email, name: S.profile?.name });
+    const pwErr = validatePassword(newPass);
     if (pwErr) { toast(pwErr, "err"); return; }
     if (newPass !== confPass) { toast("הסיסמאות לא תואמות","err"); return; }
     const {error} = await sb.auth.updateUser({password: newPass});
