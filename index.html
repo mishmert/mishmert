@@ -3350,7 +3350,7 @@ function getBlockingVacation(empId, date, shiftId) {
 
 async function toggleCellEmp(date, shift, empId) {
   const weekStart = getWeekDates(S.weekOffset)[0];
-  if (S.publishedWeeks.has(weekStart) && !(await uiConfirm({title:"השבוע כבר פורסם", message:"שינויים יופיעו אצל העובדים בפרסום הבא. לשנות בכל זאת?", tone:"warn", okLabel:"לשנות"}))) return;
+  if (S.publishedWeeks.has(weekStart) && !(await uiConfirm({title:"השבוע כבר פורסם", message:"השינוי יוצג לעובדים מיד. התראה (מייל + פוש) עם סיכום כל השינויים תישלח לכל עובד שנפגע — 10 דקות לאחר השינוי האחרון. להמשיך?", tone:"warn", okLabel:"להמשיך"}))) return;
   if (!S.schedule[date]) S.schedule[date] = {};
   if (!S.schedule[date][shift]) S.schedule[date][shift] = [];
   const arr = S.schedule[date][shift];
