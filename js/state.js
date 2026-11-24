@@ -20,10 +20,7 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { SHIFTS, SHIFT_BY_ID, SHIFT_LABELS, WEEKEND_SHIFTS } from './constants.js';
-import { render, silentRefresh } from './main.js';
-import { toast } from './utils.js';
-export let S = {
+let S = {
   view: "loading",
   user: null, profile: null, business: null,
   employees: [], vacations: [], swapRequests: [], availSubmissions: [],
@@ -58,21 +55,12 @@ export let S = {
 };
 window.S = S;  // Expose state to debug helpers
 
-// Reset S to a fresh object (e.g. on logout). Must live in state.js because
-// an imported binding cannot be reassigned from the outside — only the
-// module that declared `let S` can rebind it, and callers see the new value
-// through the live binding.
-export function resetState(partial) {
-  S = { ...S, ...partial };
-  window.S = S;
-}
-
 
 // ── AVAIL-DRAFT PERSISTENCE ──
 // Save unfinished block selections to localStorage so a refresh, tab-crash or
 // accidental log-out doesn't lose work. Keyed per-user so switching accounts
 // doesn't leak across logins. Restored by loadAll() after a successful login.
-export function persistAvailDraft() {
+function persistAvailDraft() {
   try {
     if (!S.user) return;
     const draft = S.availDraft || {};
@@ -87,7 +75,7 @@ export function persistAvailDraft() {
     }));
   } catch(_){}
 }
-export function restoreAvailDraft() {
+function restoreAvailDraft() {
   try {
     if (!S.user) return;
     const raw = localStorage.getItem("availDraft_" + S.user.id);
@@ -103,7 +91,7 @@ export function restoreAvailDraft() {
     S.blockReasons = payload.reasons || {};
   } catch(_){}
 }
-export function clearPersistedAvailDraft() {
+function clearPersistedAvailDraft() {
   try { if (S.user) localStorage.removeItem("availDraft_" + S.user.id); } catch(_){}
 }
 
@@ -132,11 +120,11 @@ document.addEventListener("focusout", function(ev){
 // only touches state after successful live loads.
 S._online = typeof navigator !== "undefined" ? navigator.onLine : true;
 
-export function _offlineCacheKey() {
+function _offlineCacheKey() {
   return S.user?.id ? "offlineCache_" + S.user.id : null;
 }
 
-export function persistOfflineCache() {
+function persistOfflineCache() {
   try {
     const key = _offlineCacheKey();
     if (!key) return;
@@ -162,7 +150,7 @@ export function persistOfflineCache() {
   } catch(_) { /* quota / serialization — not fatal */ }
 }
 
-export function restoreOfflineCache() {
+function restoreOfflineCache() {
   try {
     const key = _offlineCacheKey();
     if (!key) return false;

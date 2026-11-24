@@ -10,15 +10,14 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { getBlockingVacation } from './actions.js';
-export const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
-export const SHIFTS = [
+const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const SHIFTS = [
   { id:"morning",   label:"בוקר",    start:"07:00", end:"15:00", color:"#F59E0B" },
   { id:"morning2",  label:"בוקר ב׳", start:"09:00", end:"17:00", color:"#F97316" },
   { id:"afternoon", label:"צהריים",  start:"15:00", end:"23:00", color:"#10B981" },
   { id:"night",     label:"לילה",    start:"23:00", end:"07:00", color:"#6366F1" },
 ];
-export const BLOCK_SHIFTS = [
+const BLOCK_SHIFTS = [
   { id:"morning",   label:"בוקר",   start:"07:00", end:"17:00", color:"#F59E0B" },
   { id:"afternoon", label:"צהריים", start:"15:00", end:"23:00", color:"#10B981" },
   { id:"night",     label:"לילה",   start:"23:00", end:"07:00", color:"#6366F1" },
@@ -27,7 +26,7 @@ export const BLOCK_SHIFTS = [
 // Thursday: only the night shift is different (starts earlier, ends later — 22:45-07:30
 // instead of the usual 23:00-07:00), because it overlaps into Friday morning handover.
 // Friday/Saturday: all shifts have their own hours (morning + night only — no afternoon).
-export const DAY_SHIFT_OVERRIDES = {
+const DAY_SHIFT_OVERRIDES = {
   4: [ // Thursday — only night overridden, morning/morning2/afternoon inherit from SHIFTS
     { id:"night", label:"לילה", start:"22:45", end:"08:00", color:"#6366F1" },
   ],
@@ -42,9 +41,9 @@ export const DAY_SHIFT_OVERRIDES = {
 };
 // Generic weekend fallback (used in places where the specific day isn't known — e.g. rules
 // engine looking up shift definitions by id only). Saturday hours are the safest generic pick.
-export const WEEKEND_SHIFTS = DAY_SHIFT_OVERRIDES[6];
+const WEEKEND_SHIFTS = DAY_SHIFT_OVERRIDES[6];
 
-export function getShiftsForDate(date) {
+function getShiftsForDate(date) {
   const dt = new Date(date+"T00:00:00");
   const day = dt.getDay();
   // Fri/Sat: return ONLY the two shifts that run (morning + night)
@@ -54,8 +53,8 @@ export function getShiftsForDate(date) {
   if (!overrides) return SHIFTS;
   return SHIFTS.map(sh => overrides.find(o => o.id === sh.id) || sh);
 }
-export const SHIFT_BY_ID = Object.fromEntries(SHIFTS.map(s=>[s.id,s]));
-export const SHIFT_LABELS = Object.fromEntries(SHIFTS.map(s=>[s.id,s.label]));
+const SHIFT_BY_ID = Object.fromEntries(SHIFTS.map(s=>[s.id,s]));
+const SHIFT_LABELS = Object.fromEntries(SHIFTS.map(s=>[s.id,s.label]));
 
 // ══════════════════════════════════════════════════════
 // RULE ENGINE — pluggable scheduling rules
@@ -63,7 +62,7 @@ export const SHIFT_LABELS = Object.fromEntries(SHIFTS.map(s=>[s.id,s.label]));
 //   - blocked: true → employee cannot be assigned to this shift
 //   - score: number → added to total score (positive = prefer, negative = avoid)
 // ══════════════════════════════════════════════════════
-export const RULES = {
+const RULES = {
   // === HARD BLOCKS ===
   vacation: {
     name: "חופשה מאושרת",
@@ -349,7 +348,7 @@ export const RULES = {
 };
 
 // Run all rules and return final result
-export function runRules(ctx) {
+function runRules(ctx) {
   let totalScore = 0;
   let blockedReason = null;
   for (const ruleId in RULES) {
@@ -366,7 +365,7 @@ export function runRules(ctx) {
   return { blocked: false, score: totalScore };
 }
 // Jewish Holidays 2026-2027
-export const JEWISH_HOLIDAYS = {
+const JEWISH_HOLIDAYS = {
   // 2026 (verified against hebcal.com Israel schedule)
   "2026-02-02": "ט״ו בשבט",
   "2026-03-02": "תענית אסתר",
@@ -438,7 +437,7 @@ export const JEWISH_HOLIDAYS = {
   "2027-12-31": "חנוכה",
   "2028-01-01": "חנוכה",
 };
-export function getHoliday(dateStr) { return JEWISH_HOLIDAYS[dateStr] || null; }
+function getHoliday(dateStr) { return JEWISH_HOLIDAYS[dateStr] || null; }
 
-export const EMP_COLORS = ["#3B82F6","#EC4899","#14B8A6","#F97316","#8B5CF6","#EF4444","#06B6D4","#84CC16","#F59E0B","#6366F1"];
-export const ec = (idx) => EMP_COLORS[idx % EMP_COLORS.length];
+const EMP_COLORS = ["#3B82F6","#EC4899","#14B8A6","#F97316","#8B5CF6","#EF4444","#06B6D4","#84CC16","#F59E0B","#6366F1"];
+const ec = (idx) => EMP_COLORS[idx % EMP_COLORS.length];
