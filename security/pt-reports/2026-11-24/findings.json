@@ -37,9 +37,12 @@
         "CWE-664",
         "CWE-440"
       ],
-      "status": "open",
+      "status": "fixed_during_engagement",
       "fingerprint": "j27f:mfa_reset:client_slug_dead",
-      "regression_of": "MSH-202648-009"
+      "regression_of": "MSH-202648-009",
+      "resolved_at": "2026-11-24T10:14:34Z",
+      "resolved_by_commit": "a3c2f28",
+      "resolution_note": "Owner remediated during the engagement window: a3c2f28 updated index.html to call the clean admin-reset-mfa slug, and the triple-hyphen slug was re-populated with the real function body at v4 so cached clients continue to work."
     },
     {
       "id": "MSH-202647-003",
@@ -216,5 +219,9 @@
       "status": "open_unverified",
       "fingerprint": "password_min:server_side:unverified"
     }
-  ]
+  ],
+  "addendum": {
+    "issued_at": "2026-11-24T12:35:00Z",
+    "note": "MSH-202647-002 was remediated during the engagement window (commit a3c2f28 at 10:14 UTC, roughly 3 minutes after the audit's MCP-level data collection). The PDF report captures the point-in-time state at 10:11 UTC and remains the authoritative deliverable, but findings.json has been updated so next week's diff correctly treats MSH-202647-002 as resolved. MSH-202647-001 (CRITICAL) remains open as of this addendum; re-verified post-fix."
+  }
 }

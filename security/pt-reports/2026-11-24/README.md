@@ -20,3 +20,9 @@ The two new regressions outweigh this week's eight remediation wins. Both are ea
 2. Change one string in `index.html:9448` from `"admin---reset---mfa"` to `"admin-reset-mfa"`.
 
 See the PDF for full remediation guidance.
+
+## Addendum (2026-11-24 12:35 UTC)
+
+**MSH-202647-002 was remediated during the engagement window.** Commit `a3c2f28` (2026-11-24 10:14 UTC) updated `index.html` to call the clean `admin-reset-mfa` slug, and the triple-hyphen stub at the `admin---reset---mfa` slug was re-populated (v4) with the real MFA-reset logic so cached clients continue to work. The PDF is a point-in-time snapshot (data collected 10:11 UTC) and remains the authoritative deliverable; `findings.json` has been updated so next week's diff treats this finding as `fixed_during_engagement`.
+
+**MSH-202647-001 (CRITICAL) was re-verified at 12:34 UTC and is still live** — `anon` still has EXECUTE on `public._internal_cron_headers()`, so the secret-disclosure chain described in the PDF is still exploitable. Fix per the PDF's §MSH-202647-001 remediation section.
