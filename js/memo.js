@@ -9,6 +9,8 @@
 // ══════════════════════════════════════════════════════
 // MEMOIZATION — cache expensive lookups
 // ══════════════════════════════════════════════════════
+"use strict";
+
 const _memoCache = new Map();
 const _memoVersion = { current: 0 };
 // Invalidate memo cache when data changes

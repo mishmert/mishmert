@@ -21,6 +21,8 @@
 // EXPORT
 // ══════════════════════════════════════════════════════
 // Parse a note into tags and free text
+"use strict";
+
 function _parseNote(rawNote) {
   if (!rawNote) return { tags: [], text: "" };
   if (rawNote.startsWith("🏷️ ")) {

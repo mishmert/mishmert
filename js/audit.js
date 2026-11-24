@@ -16,6 +16,8 @@
 // ══════════════════════════════════════════════════════
 // AUDIT LOG — security & compliance tracking
 // ══════════════════════════════════════════════════════
+"use strict";
+
 async function logAction(action, details) {
   if (!S.user || !S.profile?.business_id) return;
   try {

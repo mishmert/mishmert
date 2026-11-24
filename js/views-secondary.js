@@ -20,6 +20,8 @@
 // ══════════════════════════════════════════════════════
 // SETTINGS VIEW
 // ══════════════════════════════════════════════════════
+"use strict";
+
 function viewSettings() {
   const wrap = e("div");
   wrap.appendChild(div("page-title",["⚙️ הגדרות"],{style:"margin-bottom:16px"}));

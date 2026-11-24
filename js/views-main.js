@@ -27,6 +27,8 @@
 // of classic <script>s.
 
 // ── HEADER ──
+"use strict";
+
 function viewHeader() {
   const pendingVacs = S.vacations.filter(v=>v.status==="pending").length;
   const pendingSwaps = (S.swaps||[]).filter(s=>s.status==="pending_manager" || s.status==="pending_peer").length;

@@ -19,6 +19,8 @@
 // ══════════════════════════════════════════════════════
 // EMAIL NOTIFICATIONS via Supabase Edge Function + Resend
 // ══════════════════════════════════════════════════════
+"use strict";
+
 const APP_URL = "https://mishmert.com/";
 
 // Email queue with rate limiting (Resend: 2/sec limit)

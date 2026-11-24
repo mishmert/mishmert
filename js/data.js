@@ -27,6 +27,8 @@
 // `isManager()`, `isAdmin()`, `invalidateCaches()`, `silentRefresh()` (all inline),
 // plus the pure helpers from constants.js / utils.js.
 
+"use strict";
+
 async function loadAll(user) {
   S.user = user;
 

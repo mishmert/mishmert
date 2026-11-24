@@ -22,6 +22,8 @@
 // SCHEDULE ACTIONS
 // ══════════════════════════════════════════════════════
 // Cross-week schedule cache for conflict checks
+"use strict";
+
 const _crossWeekCache = {};  // { "YYYY-MM-DD": {shiftId: [empIds]} }
 
 async function loadDateAssignments(dateStr) {

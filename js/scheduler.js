@@ -19,6 +19,8 @@
 // ══════════════════════════════════════════════════════
 // SMART SCHEDULE ALGORITHM
 // ══════════════════════════════════════════════════════
+"use strict";
+
 async function runSmartSchedule() {
   // Backup current schedule for undo
   S.scheduleBackup = {

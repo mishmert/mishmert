@@ -13,6 +13,8 @@
 // ══════════════════════════════════════════════════════
 // SCHEDULE HISTORY (Undo/Redo) — stack based, no off-by-one bugs
 // ══════════════════════════════════════════════════════
+"use strict";
+
 const MAX_HISTORY = 20;
 
 function _snapshotCurrentSchedule(label) {

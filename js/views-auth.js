@@ -18,6 +18,8 @@
 // ══════════════════════════════════════════════════════
 
 // ── LOADING ──
+"use strict";
+
 function viewLoading() {
   const wrap = e("div",{style:"padding:20px;max-width:900px;margin:0 auto"});
   // Header skeleton

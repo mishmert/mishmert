@@ -12,6 +12,8 @@
 // ══════════════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════════════
+"use strict";
+
 const $ = id => document.getElementById(id);
 function e(tag, props={}, children=[]) {
   const el = document.createElement(tag);
