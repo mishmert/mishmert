@@ -9445,7 +9445,7 @@ function viewSettings() {
       });
       if (!ok) return;
       try {
-        const { data, error } = await sb.functions.invoke("admin---reset---mfa", { body: { empId: S.resetMfaEmpId } });
+        const { data, error } = await sb.functions.invoke("admin-reset-mfa", { body: { empId: S.resetMfaEmpId } });
         if (error) throw error;
         toast("2FA של " + emp.name + " אופס ✓");
         S.resetMfaEmpId = "";
