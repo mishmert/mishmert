@@ -1,27 +1,11 @@
-const CACHE = "meshmeret-v14";
+const CACHE = "meshmeret-v15";
+// Pre-cache only the HTML shell + manifest. The bundled JS/CSS have hashed
+// filenames that change every build, so the SW learns them from the first
+// fetch via its network-first handler below. That means first-cold-load
+// requires network, but every re-open after that works offline too.
 const ASSETS = [
   "/",
   "/index.html",
-  "/styles.css",
-  "/js/sb.js",
-  "/js/constants.js",
-  "/js/utils.js",
-  "/js/state.js",
-  "/js/helpers.js",
-  "/js/roles.js",
-  "/js/router.js",
-  "/js/data.js",
-  "/js/email.js",
-  "/js/audit.js",
-  "/js/scheduler.js",
-  "/js/history.js",
-  "/js/actions.js",
-  "/js/memo.js",
-  "/js/export.js",
-  "/js/views-auth.js",
-  "/js/views-main.js",
-  "/js/views-secondary.js",
-  "/js/main.js",
   "/manifest.json"
 ];
 
