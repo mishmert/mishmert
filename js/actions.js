@@ -24,21 +24,9 @@
 // Cross-week schedule cache for conflict checks
 "use strict";
 
-import { logAction, saveScheduleToDB, sendEmail } from './audit.js';
-import { DAYS, SHIFTS, SHIFT_BY_ID, getHoliday, getShiftsForDate } from './constants.js';
-import { loadAvailSubmissions, loadEmployees, loadInvitations, loadJoinRequests, loadSchedule, loadSwapRequests, loadVacations, sendPush } from './data.js';
-import { fmtDate, generateSecureToken, getNotifiedManagers, isValidEmail } from './helpers.js';
-import { pushScheduleHistory } from './history.js';
-import { render, silentRefresh } from './main.js';
-import { getEmp } from './memo.js';
-import { getActiveProfile } from './roles.js';
-import { sb } from './sb.js';
-import { S, clearPersistedAvailDraft } from './state.js';
-import { e, friendlyError, getWeekDates, toast, uiAlert, uiConfirm, uiPrompt } from './utils.js';
+const _crossWeekCache = {};  // { "YYYY-MM-DD": {shiftId: [empIds]} }
 
-export const _crossWeekCache = {};  // { "YYYY-MM-DD": {shiftId: [empIds]} }
-
-export async function loadDateAssignments(dateStr) {
+async function loadDateAssignments(dateStr) {
   if (_crossWeekCache[dateStr]) return _crossWeekCache[dateStr];
   if (S.schedule[dateStr]) {
     _crossWeekCache[dateStr] = S.schedule[dateStr];
@@ -72,7 +60,7 @@ export async function loadDateAssignments(dateStr) {
 }
 
 // Returns conflict reason, or null. Checks across weeks too.
-export async function checkShiftConflictAsync(date, shift, empId, ignoreDate = null, ignoreShift = null) {
+async function checkShiftConflictAsync(date, shift, empId, ignoreDate = null, ignoreShift = null) {
   // First check in-memory (current week)
   const syncCheck = checkShiftConflict(date, shift, empId, ignoreDate, ignoreShift);
   if (syncCheck) return syncCheck;
@@ -111,7 +99,7 @@ export async function checkShiftConflictAsync(date, shift, empId, ignoreDate = n
   return null;
 }
 
-export function checkShiftConflict(date, shift, empId, ignoreDate = null, ignoreShift = null) {
+function checkShiftConflict(date, shift, empId, ignoreDate = null, ignoreShift = null) {
   const emp = getEmp(empId);
   const name = emp?.name || "עובד";
 
@@ -149,7 +137,7 @@ export function checkShiftConflict(date, shift, empId, ignoreDate = null, ignore
 // Handles PARTIAL days: on the first/last day of a vacation, only specific shifts may be blocked.
 // Returns the blocking vacation object if blocked, or null if the employee is free for this shift.
 // Human-readable description of partial-day shifts for a vacation (for display)
-export function describePartialVac(v) {
+function describePartialVac(v) {
   const shiftLabel = (id) => (SHIFTS.find(s=>s.id===id)?.label || id);
   const parts = [];
   if (Array.isArray(v.start_day_shifts) && v.start_day_shifts.length > 0) {
@@ -161,7 +149,7 @@ export function describePartialVac(v) {
   return parts.length > 0 ? parts.join(" · ") : "";
 }
 
-export function getBlockingVacation(empId, date, shiftId) {
+function getBlockingVacation(empId, date, shiftId) {
   const vacs = (S.vacations || []).filter(v =>
     v.employee_id === empId && v.status === "approved" &&
     date >= v.start_date && date <= v.end_date
@@ -189,7 +177,7 @@ export function getBlockingVacation(empId, date, shiftId) {
   return null;
 }
 
-export async function toggleCellEmp(date, shift, empId) {
+async function toggleCellEmp(date, shift, empId) {
   const weekStart = getWeekDates(S.weekOffset)[0];
   if (S.publishedWeeks.has(weekStart) && !(await uiConfirm({title:"השבוע כבר פורסם", message:"השינוי יוצג לעובדים מיד. התראה (מייל + פוש) עם סיכום כל השינויים תישלח לכל עובד שנפגע — 10 דקות לאחר השינוי האחרון. להמשיך?", tone:"warn", okLabel:"להמשיך"}))) return;
   if (!S.schedule[date]) S.schedule[date] = {};
@@ -306,7 +294,7 @@ export async function toggleCellEmp(date, shift, empId) {
   render();
 }
 
-export function toggleLock(date, shift, empId) {
+function toggleLock(date, shift, empId) {
   const key = date+"|"+shift;
   if (!S.lockedSlots[key]) S.lockedSlots[key] = new Set();
   if (S.lockedSlots[key].has(empId)) S.lockedSlots[key].delete(empId);
@@ -316,7 +304,7 @@ export function toggleLock(date, shift, empId) {
 
 // Build the full week schedule data (all employees, all shifts) — used for manager preview
 // AND for the "full schedule view" email sent to everyone on real publish.
-export function buildFullScheduleData(wd) {
+function buildFullScheduleData(wd) {
   return wd.map(date => {
     const dt = new Date(date+"T00:00:00");
     const dayShifts = getShiftsForDate(date);
@@ -360,7 +348,7 @@ export function buildFullScheduleData(wd) {
   });
 }
 
-export async function publishWeek(type) {
+async function publishWeek(type) {
   const wd = getWeekDates(S.weekOffset);
   const weekStart = wd[0];
   const weekLabel = fmtDate(wd[0]) + " — " + fmtDate(wd[6]);
@@ -555,7 +543,7 @@ export async function publishWeek(type) {
 // ══════════════════════════════════════════════════════
 // EMPLOYEE ACTIONS
 // ══════════════════════════════════════════════════════
-export async function createInvitation() {
+async function createInvitation() {
   const { name, email, role } = S.newInvitation;
   
   // Validation
@@ -618,7 +606,7 @@ export async function createInvitation() {
   render();
 }
 
-export async function revokeInvitation(invId) {
+async function revokeInvitation(invId) {
   if (!(await uiConfirm({title:"לבטל הזמנה?", message:"הלינק שנשלח לא יהיה תקף יותר.", tone:"warn", okLabel:"בטל הזמנה"}))) return;
   const { error } = await sb.from("invitations").update({ status: "revoked" }).eq("id", invId);
   if (error) { toast(friendlyError(error), "err"); return; }
@@ -628,7 +616,7 @@ export async function revokeInvitation(invId) {
   render();
 }
 
-export async function resendInvitation(inv) {
+async function resendInvitation(inv) {
   // Generate new token and extend expiry
   const newToken = generateSecureToken();
   const expiresAt = new Date();
@@ -658,7 +646,7 @@ export async function resendInvitation(inv) {
   render();
 }
 
-export async function copyInviteLink(inv) {
+async function copyInviteLink(inv) {
   const inviteUrl = window.location.origin + "/?invite=" + inv.token;
   try {
     await navigator.clipboard.writeText(inviteUrl);
@@ -668,7 +656,7 @@ export async function copyInviteLink(inv) {
   }
 }
 
-export async function addEmployee() {
+async function addEmployee() {
   const {name,email,idNumber,phone,role} = S.newEmp;
   if (!name.trim()) { toast("נא להזין שם","err"); return; }
   const {error} = await sb.from("profiles").insert({
@@ -685,7 +673,7 @@ export async function addEmployee() {
   silentRefresh();
 }
 
-export async function renameEmployee(emp) {
+async function renameEmployee(emp) {
   const newName = await uiPrompt({title:"עריכת שם", message:"שם חדש עבור " + emp.name, defaultValue:emp.name, placeholder:"שם מלא", okLabel:"שמור"});
   if (!newName || !newName.trim()) return;
   const trimmed = newName.trim();
@@ -712,7 +700,7 @@ export async function renameEmployee(emp) {
   }
 }
 
-export async function resetPassword(emp) {
+async function resetPassword(emp) {
   if (!emp.email) { toast("לעובד אין אימייל","err"); return; }
   if (!(await uiConfirm({title:"לשלוח איפוס סיסמה?", message:"לינק ישלח ל-" + emp.name + " בכתובת: " + emp.email, tone:"info", okLabel:"שלח לינק"}))) return;
   
@@ -734,7 +722,7 @@ export async function resetPassword(emp) {
   }
 }
 
-export async function deleteEmployee(id) {
+async function deleteEmployee(id) {
   const emp = getEmp(id);
   if (!(await uiConfirm({title:"מחיקת עובד", message:"האם למחוק את " + (emp?.name || "העובד") + "? ניתן לשחזר במשך 8 שניות.", tone:"danger", okLabel:"מחק"}))) return;
   const {error} = await sb.from("profiles").update({is_deleted:true}).eq("id",id);
@@ -749,7 +737,7 @@ export async function deleteEmployee(id) {
   });
 }
 
-export async function saveConstraints(empId, data) {
+async function saveConstraints(empId, data) {
   const updateData = {
     max_shifts_per_week: data.maxShifts,
     block_limits: data.blockLimits || null,
@@ -777,7 +765,7 @@ export async function saveConstraints(empId, data) {
 // ══════════════════════════════════════════════════════
 // VACATION ACTIONS
 // ══════════════════════════════════════════════════════
-export async function addVacation() {
+async function addVacation() {
   if (!S.newVac.startDate || !S.newVac.endDate) {
     toast("נא למלא תאריכים", "err");
     return;
@@ -851,7 +839,7 @@ export async function addVacation() {
   silentRefresh();
 }
 
-export async function deleteVacRequest(id) {
+async function deleteVacRequest(id) {
   if (!(await uiConfirm({title:"למחוק בקשה?", message:"ניתן לשחזר במשך 8 שניות אחרי המחיקה.", tone:"danger", okLabel:"מחק"}))) return;
   const vacBefore = S.vacations.find(v=>v.id===id);
   if (!vacBefore) return;
@@ -878,7 +866,7 @@ export async function deleteVacRequest(id) {
   });
 }
 
-export async function updateVacStatus(id, status, rejectReason) {
+async function updateVacStatus(id, status, rejectReason) {
   const vacBefore = S.vacations.find(v=>v.id===id);
   const updateData = {status, approved_by: S.user.id};
   if (rejectReason) updateData.reject_reason = rejectReason;
@@ -923,7 +911,7 @@ export async function updateVacStatus(id, status, rejectReason) {
 // ══════════════════════════════════════════════════════
 // SWAP ACTIONS
 // ══════════════════════════════════════════════════════
-export async function updateSwapStatus(id, status) {
+async function updateSwapStatus(id, status) {
   await sb.from("swap_requests").update({status}).eq("id",id);
   await loadSwapRequests();
   toast(status==="approved"?"חילוף אושר ✓":"חילוף נדחה"); render();
@@ -963,7 +951,7 @@ export async function updateSwapStatus(id, status) {
 // Employee requests to join an unfilled shift -> creates a pending request for the manager.
 // Check whether joining `shiftId` on `date` would violate rest rules for this employee.
 // Returns an error string if blocked, or null if OK.
-export function checkJoinRestConflict(empId, date, shiftId) {
+function checkJoinRestConflict(empId, date, shiftId) {
   const name = getEmp(empId)?.name || "אתה";
   const worksShift = (d, s) => (S.schedule[d]?.[s] || []).includes(empId);
 
@@ -999,7 +987,7 @@ export function checkJoinRestConflict(empId, date, shiftId) {
   return null;
 }
 
-export async function requestJoinShift(empId, date, shiftId, shiftLabel) {
+async function requestJoinShift(empId, date, shiftId, shiftLabel) {
   const emp = getEmp(empId) || getActiveProfile();
   const dt = new Date(date+"T00:00:00");
   const dateLabel = DAYS[dt.getDay()] + " " + dt.getDate() + "/" + (dt.getMonth()+1);
@@ -1051,7 +1039,7 @@ export async function requestJoinShift(empId, date, shiftId, shiftLabel) {
 }
 
 // Manager approves/rejects a join request
-export async function processJoinRequest(req, isApproved) {
+async function processJoinRequest(req, isApproved) {
   // Safety net: re-check rest rules at approval time (schedule may have changed since the request)
   if (isApproved && typeof checkJoinRestConflict === "function") {
     const restErr = checkJoinRestConflict(req.employee_id, req.date, req.shift);
@@ -1124,7 +1112,7 @@ export async function processJoinRequest(req, isApproved) {
 }
 
 // Ensure a schedule row exists for the week containing `date`, return it
-export async function _ensureScheduleRow(date) {
+async function _ensureScheduleRow(date) {
   // Find the Sunday of the week containing date
   const dt = new Date(date+"T00:00:00");
   const sunday = new Date(dt);
@@ -1139,7 +1127,7 @@ export async function _ensureScheduleRow(date) {
   return created;
 }
 
-export async function submitAvailability(empId, weekStart, slots, note) {
+async function submitAvailability(empId, weekStart, slots, note) {
   await sb.from("availability_submissions").upsert({
     employee_id: empId, business_id: S.profile.business_id,
     week_start: weekStart, slots, note: note||null

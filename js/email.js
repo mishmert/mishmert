@@ -21,13 +21,11 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { sb } from './sb.js';
-
-export const APP_URL = "https://mishmert.com/";
+const APP_URL = "https://mishmert.com/";
 
 // Email queue with rate limiting (Resend: 2/sec limit)
 // Map each email type to the screen its link should open (?goto=<target>).
-export function _deepLinkUrl(type) {
+function _deepLinkUrl(type) {
   const base = APP_URL.replace(/\/$/, "");
   const map = {
     schedule_published:    "schedule",
@@ -46,10 +44,10 @@ export function _deepLinkUrl(type) {
   return goto ? (base + "/?goto=" + goto) : (base + "/");
 }
 
-export const _emailQueue = [];
-export let _emailProcessing = false;
+const _emailQueue = [];
+let _emailProcessing = false;
 
-export async function _processEmailQueue() {
+async function _processEmailQueue() {
   if (_emailProcessing) return;
   _emailProcessing = true;
   while (_emailQueue.length > 0) {

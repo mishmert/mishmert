@@ -8,8 +8,7 @@
 // ══════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════
-
-export const SUPABASE_URL = "https://zszlqoisokjgvplrcbic.supabase.co";
-export const SUPABASE_KEY = "sb_publishable_b6ZEtYrgGIQT8WxkahGzZg_iHTYMasi";
-export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL = "https://zszlqoisokjgvplrcbic.supabase.co";
+const SUPABASE_KEY = "sb_publishable_b6ZEtYrgGIQT8WxkahGzZg_iHTYMasi";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Meshmeret app runtime — Supabase client + styles imported; rest preserved as one scope.

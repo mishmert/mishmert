@@ -1,4 +1,4 @@
-const CACHE = "meshmeret-v13";
+const CACHE = "meshmeret-v12";
 const ASSETS = [
   "/",
   "/index.html",

@@ -20,15 +20,7 @@
 // ══════════════════════════════════════════════════════
 // Reads ?goto=<target> from the URL and navigates to the matching screen.
 // Works for both managers and employees (routing differs by role).
-
-import { loadAll } from './data.js';
-import { render } from './main.js';
-import { isManager } from './roles.js';
-import { sb } from './sb.js';
-import { S } from './state.js';
-import { btn, div, e, friendlyError, toast, uiAlert, validatePassword } from './utils.js';
-
-export function applyDeepLink() {
+function applyDeepLink() {
   let goto = null;
   try {
     const params = new URLSearchParams(window.location.search);
@@ -74,7 +66,7 @@ export function applyDeepLink() {
   } catch (e) {}
 }
 
-export async function checkAuth() {
+async function checkAuth() {
   // Check for invitation token in URL
   const params = new URLSearchParams(window.location.search);
   const inviteToken = params.get("invite");
@@ -166,7 +158,7 @@ export async function checkAuth() {
 // User must choose a new password before we take them into the app (and before the
 // MFA challenge fires). The recovery session is already AAL1; after the update, we
 // let loadAll's MFA gate route them to the authenticator code screen as usual.
-export function viewPasswordReset() {
+function viewPasswordReset() {
   const wrap = div("app");
   const box = e("div",{style:"max-width:440px;margin:0 auto;padding:40px 24px"});
 

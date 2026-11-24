@@ -14,11 +14,8 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { render } from './main.js';
-import { S } from './state.js';
-
-export const $ = id => document.getElementById(id);
-export function e(tag, props={}, children=[]) {
+const $ = id => document.getElementById(id);
+function e(tag, props={}, children=[]) {
   const el = document.createElement(tag);
   // If props is an array, it's actually children
   if (Array.isArray(props)) { children = props; props = {}; }
@@ -39,8 +36,8 @@ export function e(tag, props={}, children=[]) {
   }
   return el;
 }
-export function div(cls,children=[],extra={}) { return e("div",{class:cls,...extra},children); }
-export function btn(cls,txt,onclick,extra={}) {
+function div(cls,children=[],extra={}) { return e("div",{class:cls,...extra},children); }
+function btn(cls,txt,onclick,extra={}) {
   // Wrap onclick with a tiny haptic pulse — feels crisp on mobile, silent elsewhere.
   // Also auto-disables the button while an async handler is running (prevents double-submit
   // → duplicate DB inserts like the "two Lidors" bug we saw before). Shows a spinner too.
@@ -71,7 +68,7 @@ export function btn(cls,txt,onclick,extra={}) {
   return e("button",{class:cls,...extra,onclick: wrapped},txt);
 }
 
-export function toast(msg,type="ok",undoFn=null) {
+function toast(msg,type="ok",undoFn=null) {
   S.toast={msg,type,undo:undoFn}; render();
   // Undo toasts stay longer so the user can react.
   const ttl = undoFn ? 8000 : 3000;
@@ -87,7 +84,7 @@ export function toast(msg,type="ok",undoFn=null) {
 // Supabase/Postgres errors are technical. This translates the common ones to Hebrew the
 // user can act on. Returns the input string unchanged if no mapping exists, so nothing
 // is ever hidden from the developer debugging via console.
-export function friendlyError(err) {
+function friendlyError(err) {
   if (!err) return "שגיאה לא ידועה";
   const msg = typeof err === "string" ? err : (err.message || err.error_description || err.code || String(err));
   const low = msg.toLowerCase();
@@ -111,7 +108,7 @@ export function friendlyError(err) {
 
 // Minimal password check — just the Supabase built-in 6-char minimum.
 // Strict policy was removed because employees couldn't reset passwords in practice.
-export function validatePassword(password) {
+function validatePassword(password) {
   if (!password) return "נא להזין סיסמה";
   // MSH-202648-010: NIST SP 800-63B §5.1.1 min = 8; we raise to 10 for a
   // SOC-team tool. Server-side min should also be set to 10 in the
@@ -124,7 +121,7 @@ export function validatePassword(password) {
 // (withBtnLoading helper removed — auto-disable on async handlers now lives inside btn() itself)
 
 // Tiny helper for tap feedback on buttons/interactive elements.
-export function haptic(pattern) {
+function haptic(pattern) {
   try { if (navigator.vibrate) navigator.vibrate(pattern || 10); } catch(_){}
 }
 
@@ -135,10 +132,10 @@ export function haptic(pattern) {
 // ── Skeleton Loader Helpers ──
 // Return placeholder shapes shaped like the real content, so screens don't feel empty
 // while data is fetching. Beats "טוען..." — perceived load time drops significantly.
-export function skeleton(cls) { return e("div",{class:"skeleton "+(cls||"")}, ""); }
+function skeleton(cls) { return e("div",{class:"skeleton "+(cls||"")}, ""); }
 
 // A card skeleton — matches the general shape of a .card block with title + lines
-export function skeletonCard() {
+function skeletonCard() {
   return e("div",{class:"card"}, [
     skeleton("skeleton-title"),
     skeleton("skeleton-line"),
@@ -148,7 +145,7 @@ export function skeletonCard() {
 }
 
 // Schedule grid skeleton — 7 columns of shift cells
-export function skeletonSchedule() {
+function skeletonSchedule() {
   const wrap = e("div",{class:"card"}, [
     skeleton("skeleton-title"),
   ]);
@@ -159,7 +156,7 @@ export function skeletonSchedule() {
 }
 
 // A row of chip placeholders
-export function skeletonChips(n) {
+function skeletonChips(n) {
   const wrap = e("div",{style:"padding:4px 0"});
   for (let i=0; i<(n||6); i++) wrap.appendChild(skeleton("skeleton-chip"));
   return wrap;
@@ -171,8 +168,8 @@ export function skeletonChips(n) {
 // uiConfirm  → Promise<boolean>          (true = OK, false = Cancel)
 // uiPrompt   → Promise<string | null>    (string entered, or null if cancelled)
 // uiAlert    → Promise<void>             (resolves when user acknowledges)
-export let _dlgResolve = null;
-export function _closeDialog(value) {
+let _dlgResolve = null;
+function _closeDialog(value) {
   haptic(8);
   const r = _dlgResolve;
   S.dialog = null;
@@ -180,7 +177,7 @@ export function _closeDialog(value) {
   render();
   if (r) r(value);
 }
-export function uiConfirm(opts) {
+function uiConfirm(opts) {
   if (typeof opts === "string") opts = { message: opts };
   return new Promise(resolve => {
     _dlgResolve = resolve;
@@ -196,7 +193,7 @@ export function uiConfirm(opts) {
     render();
   });
 }
-export function uiPrompt(opts) {
+function uiPrompt(opts) {
   if (typeof opts === "string") opts = { message: opts };
   return new Promise(resolve => {
     _dlgResolve = resolve;
@@ -214,7 +211,7 @@ export function uiPrompt(opts) {
     render();
   });
 }
-export function uiAlert(opts) {
+function uiAlert(opts) {
   if (typeof opts === "string") opts = { message: opts };
   return new Promise(resolve => {
     _dlgResolve = resolve;
@@ -230,17 +227,17 @@ export function uiAlert(opts) {
   });
 }
 
-export function today() {
+function today() {
   // Always Israel's today — otherwise a device abroad rolls over at local
   // midnight, which could be hours off and put "today" on the wrong day.
   const d = israelNow();
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
-export function fmtYMD(d) {
+function fmtYMD(d) {
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 // Duration in hours between two "HH:MM" strings, handling shifts that cross midnight.
-export function shiftDurationHours(startStr, endStr) {
+function shiftDurationHours(startStr, endStr) {
   if (!startStr || !endStr) return 0;
   const [sh,sm] = startStr.split(":").map(Number);
   const [eh,em] = endStr.split(":").map(Number);
@@ -249,7 +246,7 @@ export function shiftDurationHours(startStr, endStr) {
   return (endMin-startMin)/60;
 }
 // Info (first/last date, ISO range strings, Hebrew label) for the month at `offset` months from now.
-export function getMonthInfo(offset=0) {
+function getMonthInfo(offset=0) {
   // Anchor on Israel time so an admin abroad still gets "this month" relative
   // to their team's calendar, not the device's.
   const now = israelNow();
@@ -262,7 +259,7 @@ export function getMonthInfo(offset=0) {
     label: first.toLocaleDateString("he-IL", {month:"long", year:"numeric"})
   };
 }
-export function getWeekDates(offset=0) {
+function getWeekDates(offset=0) {
   // Anchor on Israel's current day — otherwise a device in NY around 3-5pm
   // local would be on the *previous* Israel day and compute the wrong week.
   const d=israelNow();
@@ -283,7 +280,7 @@ export function getWeekDates(offset=0) {
 // day-of-week preset, wrong greeting, "today" rolling over at local midnight
 // instead of Jerusalem midnight). These helpers always evaluate against
 // Asia/Jerusalem regardless of the device.
-export function israelNow() {
+function israelNow() {
   // toLocaleString(en-US, {timeZone}) re-expresses the instant as wall-clock
   // text in that zone; parsing that text back gives a Date whose getDay/
   // getHours etc. match Israel's wall clock.
@@ -291,7 +288,7 @@ export function israelNow() {
 }
 // Today's date in Israel as "YYYY-MM-DD". Uses sv-SE because it formats as
 // YYYY-MM-DD natively — en-US would give "MM/DD/YYYY" which is painful to slice.
-export function israelTodayIso() {
+function israelTodayIso() {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jerusalem" });
 }
-export function israelYear() { return israelNow().getFullYear(); }
+function israelYear() { return israelNow().getFullYear(); }

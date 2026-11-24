@@ -17,26 +17,22 @@
 // Returns the active acting employee ID:
 // - In test-as-employee mode: the viewed employee's ID
 // - Otherwise: the logged-in user's ID
-
-import { S } from './state.js';
-import { e } from './utils.js';
-
-export function getActiveEmpId() {
+function getActiveEmpId() {
   return (S.testAsEmployee && S.empViewId) ? S.empViewId : S.user?.id;
 }
 
 // Returns the active acting profile object
-export function getActiveProfile() {
+function getActiveProfile() {
   if (S.testAsEmployee && S.empViewId) {
     return S.employees.find(e => e.id === S.empViewId) || S.profile;
   }
   return S.profile;
 }
 
-export function isManager() {
+function isManager() {
   if (S.testAsEmployee) return false;
   return S.profile?.role === "admin" || S.profile?.role === "manager";
 }
-export function isAdmin() {
+function isAdmin() {
   return S.profile?.role === "admin";
 }
