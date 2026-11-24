@@ -14,8 +14,11 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-const $ = id => document.getElementById(id);
-function e(tag, props={}, children=[]) {
+import { render } from './main.js';
+import { S } from './state.js';
+
+export const $ = id => document.getElementById(id);
+export function e(tag, props={}, children=[]) {
   const el = document.createElement(tag);
   // If props is an array, it's actually children
   if (Array.isArray(props)) { children = props; props = {}; }
@@ -36,8 +39,8 @@ function e(tag, props={}, children=[]) {
   }
   return el;
 }
-function div(cls,children=[],extra={}) { return e("div",{class:cls,...extra},children); }
-function btn(cls,txt,onclick,extra={}) {
+export function div(cls,children=[],extra={}) { return e("div",{class:cls,...extra},children); }
+export function btn(cls,txt,onclick,extra={}) {
   // Wrap onclick with a tiny haptic pulse — feels crisp on mobile, silent elsewhere.
   // Also auto-disables the button while an async handler is running (prevents double-submit
   // → duplicate DB inserts like the "two Lidors" bug we saw before). Shows a spinner too.
@@ -68,7 +71,7 @@ function btn(cls,txt,onclick,extra={}) {
   return e("button",{class:cls,...extra,onclick: wrapped},txt);
 }
 
-function toast(msg,type="ok",undoFn=null) {
+export function toast(msg,type="ok",undoFn=null) {
   S.toast={msg,type,undo:undoFn}; render();
   // Undo toasts stay longer so the user can react.
   const ttl = undoFn ? 8000 : 3000;
@@ -84,7 +87,7 @@ function toast(msg,type="ok",undoFn=null) {
 // Supabase/Postgres errors are technical. This translates the common ones to Hebrew the
 // user can act on. Returns the input string unchanged if no mapping exists, so nothing
 // is ever hidden from the developer debugging via console.
-function friendlyError(err) {
+export function friendlyError(err) {
   if (!err) return "שגיאה לא ידועה";
   const msg = typeof err === "string" ? err : (err.message || err.error_description || err.code || String(err));
   const low = msg.toLowerCase();
@@ -108,7 +111,7 @@ function friendlyError(err) {
 
 // Minimal password check — just the Supabase built-in 6-char minimum.
 // Strict policy was removed because employees couldn't reset passwords in practice.
-function validatePassword(password) {
+export function validatePassword(password) {
   if (!password) return "נא להזין סיסמה";
   // MSH-202648-010: NIST SP 800-63B §5.1.1 min = 8; we raise to 10 for a
   // SOC-team tool. Server-side min should also be set to 10 in the
@@ -121,7 +124,7 @@ function validatePassword(password) {
 // (withBtnLoading helper removed — auto-disable on async handlers now lives inside btn() itself)
 
 // Tiny helper for tap feedback on buttons/interactive elements.
-function haptic(pattern) {
+export function haptic(pattern) {
   try { if (navigator.vibrate) navigator.vibrate(pattern || 10); } catch(_){}
 }
 
@@ -132,10 +135,10 @@ function haptic(pattern) {
 // ── Skeleton Loader Helpers ──
 // Return placeholder shapes shaped like the real content, so screens don't feel empty
 // while data is fetching. Beats "טוען..." — perceived load time drops significantly.
-function skeleton(cls) { return e("div",{class:"skeleton "+(cls||"")}, ""); }
+export function skeleton(cls) { return e("div",{class:"skeleton "+(cls||"")}, ""); }
 
 // A card skeleton — matches the general shape of a .card block with title + lines
-function skeletonCard() {
+export function skeletonCard() {
   return e("div",{class:"card"}, [
     skeleton("skeleton-title"),
     skeleton("skeleton-line"),
@@ -145,7 +148,7 @@ function skeletonCard() {
 }
 
 // Schedule grid skeleton — 7 columns of shift cells
-function skeletonSchedule() {
+export function skeletonSchedule() {
   const wrap = e("div",{class:"card"}, [
     skeleton("skeleton-title"),
   ]);
@@ -156,7 +159,7 @@ function skeletonSchedule() {
 }
 
 // A row of chip placeholders
-function skeletonChips(n) {
+export function skeletonChips(n) {
   const wrap = e("div",{style:"padding:4px 0"});
   for (let i=0; i<(n||6); i++) wrap.appendChild(skeleton("skeleton-chip"));
   return wrap;
@@ -168,8 +171,8 @@ function skeletonChips(n) {
 // uiConfirm  → Promise<boolean>          (true = OK, false = Cancel)
 // uiPrompt   → Promise<string | null>    (string entered, or null if cancelled)
 // uiAlert    → Promise<void>             (resolves when user acknowledges)
-let _dlgResolve = null;
-function _closeDialog(value) {
+export let _dlgResolve = null;
+export function _closeDialog(value) {
   haptic(8);
   const r = _dlgResolve;
   S.dialog = null;
@@ -177,7 +180,7 @@ function _closeDialog(value) {
   render();
   if (r) r(value);
 }
-function uiConfirm(opts) {
+export function uiConfirm(opts) {
   if (typeof opts === "string") opts = { message: opts };
   return new Promise(resolve => {
     _dlgResolve = resolve;
@@ -193,7 +196,7 @@ function uiConfirm(opts) {
     render();
   });
 }
-function uiPrompt(opts) {
+export function uiPrompt(opts) {
   if (typeof opts === "string") opts = { message: opts };
   return new Promise(resolve => {
     _dlgResolve = resolve;
@@ -211,7 +214,7 @@ function uiPrompt(opts) {
     render();
   });
 }
-function uiAlert(opts) {
+export function uiAlert(opts) {
   if (typeof opts === "string") opts = { message: opts };
   return new Promise(resolve => {
     _dlgResolve = resolve;
@@ -227,17 +230,17 @@ function uiAlert(opts) {
   });
 }
 
-function today() {
+export function today() {
   // Always Israel's today — otherwise a device abroad rolls over at local
   // midnight, which could be hours off and put "today" on the wrong day.
   const d = israelNow();
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
-function fmtYMD(d) {
+export function fmtYMD(d) {
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 // Duration in hours between two "HH:MM" strings, handling shifts that cross midnight.
-function shiftDurationHours(startStr, endStr) {
+export function shiftDurationHours(startStr, endStr) {
   if (!startStr || !endStr) return 0;
   const [sh,sm] = startStr.split(":").map(Number);
   const [eh,em] = endStr.split(":").map(Number);
@@ -246,7 +249,7 @@ function shiftDurationHours(startStr, endStr) {
   return (endMin-startMin)/60;
 }
 // Info (first/last date, ISO range strings, Hebrew label) for the month at `offset` months from now.
-function getMonthInfo(offset=0) {
+export function getMonthInfo(offset=0) {
   // Anchor on Israel time so an admin abroad still gets "this month" relative
   // to their team's calendar, not the device's.
   const now = israelNow();
@@ -259,7 +262,7 @@ function getMonthInfo(offset=0) {
     label: first.toLocaleDateString("he-IL", {month:"long", year:"numeric"})
   };
 }
-function getWeekDates(offset=0) {
+export function getWeekDates(offset=0) {
   // Anchor on Israel's current day — otherwise a device in NY around 3-5pm
   // local would be on the *previous* Israel day and compute the wrong week.
   const d=israelNow();
@@ -280,7 +283,7 @@ function getWeekDates(offset=0) {
 // day-of-week preset, wrong greeting, "today" rolling over at local midnight
 // instead of Jerusalem midnight). These helpers always evaluate against
 // Asia/Jerusalem regardless of the device.
-function israelNow() {
+export function israelNow() {
   // toLocaleString(en-US, {timeZone}) re-expresses the instant as wall-clock
   // text in that zone; parsing that text back gives a Date whose getDay/
   // getHours etc. match Israel's wall clock.
@@ -288,7 +291,7 @@ function israelNow() {
 }
 // Today's date in Israel as "YYYY-MM-DD". Uses sv-SE because it formats as
 // YYYY-MM-DD natively — en-US would give "MM/DD/YYYY" which is painful to slice.
-function israelTodayIso() {
+export function israelTodayIso() {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jerusalem" });
 }
-function israelYear() { return israelNow().getFullYear(); }
+export function israelYear() { return israelNow().getFullYear(); }

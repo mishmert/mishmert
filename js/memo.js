@@ -11,12 +11,15 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-const _memoCache = new Map();
-const _memoVersion = { current: 0 };
-// Invalidate memo cache when data changes
-function invalidateMemo() { _memoVersion.current++; _memoCache.clear(); }
+import { S } from './state.js';
+import { e } from './utils.js';
 
-function memoize(key, fn) {
+export const _memoCache = new Map();
+export const _memoVersion = { current: 0 };
+// Invalidate memo cache when data changes
+export function invalidateMemo() { _memoVersion.current++; _memoCache.clear(); }
+
+export function memoize(key, fn) {
   const fullKey = key + "::" + _memoVersion.current;
   if (_memoCache.has(fullKey)) return _memoCache.get(fullKey);
   const result = fn();
@@ -30,8 +33,8 @@ function memoize(key, fn) {
 }
 
 // Get employee by ID — heavily used, worth caching
-const _empByIdCache = {};
-function getEmp(id) {
+export const _empByIdCache = {};
+export function getEmp(id) {
   if (_empByIdCache.id !== _memoVersion.current) {
     _empByIdCache.id = _memoVersion.current;
     _empByIdCache.map = Object.fromEntries((S.employees||[]).map(e=>[e.id,e]));

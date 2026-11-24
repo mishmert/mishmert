@@ -18,7 +18,15 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-async function logAction(action, details) {
+import { loadAll } from './data.js';
+import { _emailQueue, _processEmailQueue } from './email.js';
+import { render, silentRefresh } from './main.js';
+import { sb } from './sb.js';
+import { S } from './state.js';
+import { friendlyError, getWeekDates, toast, validatePassword } from './utils.js';
+import { invalidateSwapCache } from './views-main.js';
+
+export async function logAction(action, details) {
   if (!S.user || !S.profile?.business_id) return;
   try {
     await sb.from("audit_log").insert({
@@ -36,7 +44,7 @@ async function logAction(action, details) {
   }
 }
 
-async function sendEmail(type, toEmail, data) {
+export async function sendEmail(type, toEmail, data) {
   if (!toEmail) return;
   const settingMap = {
     "schedule_published": "notif_publish",
@@ -59,8 +67,8 @@ async function sendEmail(type, toEmail, data) {
   _processEmailQueue();
 }
 
-let _saveTimer = null;
-function saveScheduleToDB() {
+export let _saveTimer = null;
+export function saveScheduleToDB() {
   clearTimeout(_saveTimer);
   
   _saveTimer = setTimeout(async () => {
@@ -134,7 +142,7 @@ function saveScheduleToDB() {
   }, 800);
 }
 
-async function handleLogin(email, password) {
+export async function handleLogin(email, password) {
   const {error} = await sb.auth.signInWithPassword({email,password});
   if (error) throw error;
   const { data: {user} } = await sb.auth.getUser();
@@ -155,7 +163,7 @@ async function handleLogin(email, password) {
 // Manager registers a new business (creates a new account + business) — requires a
 // valid business-creation invite token from the platform super admin.
 // Employees can only join via secure invitation (see handleAcceptInvitation)
-async function handleRegister(name, businessName, email, password, bizInviteToken) {
+export async function handleRegister(name, businessName, email, password, bizInviteToken) {
   if (!bizInviteToken) throw new Error("נדרשת הזמנה תקפה כדי לפתוח עסק חדש");
   const pwErr = validatePassword(password);
   if (pwErr) throw new Error(pwErr);
@@ -181,7 +189,7 @@ async function handleRegister(name, businessName, email, password, bizInviteToke
   await loadAll(auth.user);
 }
 
-async function handleAcceptInvitation(name, password, token, email) {
+export async function handleAcceptInvitation(name, password, token, email) {
   if (!name?.trim()) throw new Error("נא להזין שם");
   const pwErr = validatePassword(password);
   if (pwErr) throw new Error(pwErr);
@@ -223,7 +231,7 @@ async function handleAcceptInvitation(name, password, token, email) {
   await loadAll(auth.user);
 }
 
-async function handleLogout() {
+export async function handleLogout() {
   await sb.auth.signOut();
   S = {...S, view:"login", user:null, profile:null, business:null, employees:[], vacations:[], schedule:{}, publishedWeeks:new Set()};
   render();

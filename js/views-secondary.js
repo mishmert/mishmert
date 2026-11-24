@@ -22,7 +22,20 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-function viewSettings() {
+import { addVacation, deleteVacRequest, describePartialVac, submitAvailability } from './actions.js';
+import { handleLogout, logAction, sendEmail } from './audit.js';
+import { BLOCK_SHIFTS, DAYS, SHIFTS, SHIFT_BY_ID, WEEKEND_SHIFTS, ec, getHoliday } from './constants.js';
+import { disablePushNotifications, enablePushNotifications, loadAll, loadSchedule } from './data.js';
+import { APP_URL } from './email.js';
+import { _blockPresetBase, empIdx, fmtDate, isFeatureEnabled, schedulableEmployees } from './helpers.js';
+import { render } from './main.js';
+import { getEmp } from './memo.js';
+import { isManager } from './roles.js';
+import { sb } from './sb.js';
+import { S } from './state.js';
+import { btn, div, e, fmtYMD, friendlyError, getWeekDates, israelNow, skeletonCard, skeletonSchedule, toast, today, uiConfirm, validatePassword } from './utils.js';
+
+export function viewSettings() {
   const wrap = e("div");
   wrap.appendChild(div("page-title",["⚙️ הגדרות"],{style:"margin-bottom:16px"}));
 
@@ -728,7 +741,7 @@ function viewSettings() {
 // ══════════════════════════════════════════════════════
 // EMPLOYEE VACATION VIEW (self-service)
 // ══════════════════════════════════════════════════════
-function viewEmpVacations() {
+export function viewEmpVacations() {
   // When manager is viewing as employee, use that employee's ID
   const viewingEmpId = S.testAsEmployee && S.empViewId ? S.empViewId : S.user.id;
   const my = S.vacations.filter(x => x.employee_id === viewingEmpId);
@@ -908,7 +921,7 @@ function viewEmpVacations() {
 // Loads assignment counts for an ENTIRE month at once (unlike S.schedule, which only ever
 // holds one week) so the monthly calendar view can show real data for every week, not just
 // whichever week happens to be currently loaded elsewhere.
-async function loadCalendarMonthData(firstStr, lastStr) {
+export async function loadCalendarMonthData(firstStr, lastStr) {
   if (!S.profile?.business_id) return {};
   const rangeStart = new Date(firstStr+"T00:00:00");
   rangeStart.setDate(rangeStart.getDate() - 6); // a week's Sunday can precede the month's 1st
@@ -928,7 +941,7 @@ async function loadCalendarMonthData(firstStr, lastStr) {
   return byDate;
 }
 
-function viewCalendar() {
+export function viewCalendar() {
   const wrap = e("div");
   if (!S.monthOffset) S.monthOffset = 0;
 
@@ -1035,7 +1048,7 @@ function viewCalendar() {
 // ══════════════════════════════════════════════════════
 // EMPLOYEE SETTINGS
 // ══════════════════════════════════════════════════════
-function viewEmpSettings() {
+export function viewEmpSettings() {
   const wrap = e("div");
   wrap.appendChild(div("page-title",["⚙️ הגדרות"],{style:"margin-bottom:16px"}));
 
@@ -1099,7 +1112,7 @@ function viewEmpSettings() {
   return wrap;
 }
   // ── MANAGER BLOCKS VIEW ──
-function viewManagerBlocks() {
+export function viewManagerBlocks() {
   const wrap = e("div");
   wrap.appendChild(div("page-title", ["🚫 חסימות"], {style:"margin-bottom:16px"}));
 
@@ -1414,7 +1427,7 @@ function viewManagerBlocks() {
 // ══════════════════════════════════════════════════════
 // Load all assignments from DB to compute qualifications based on full history
 // Returns: { empId: { systems: {sysName: latestDate}, shifts: {shiftId: latestDate} } }
-async function loadQualificationHistory() {
+export async function loadQualificationHistory() {
   if (!S.profile?.business_id) return {};
   const todayStr = today();
   
@@ -1471,7 +1484,7 @@ async function loadQualificationHistory() {
 // ══════════════════════════════════════════════════════
 // ANALYTICS — fairness/balance insights for the manager
 // ══════════════════════════════════════════════════════
-function viewAnalytics() {
+export function viewAnalytics() {
   const wrap = e("div");
   wrap.appendChild(div("page-title",["📊 אנליטיקה"],{style:"margin-bottom:16px"}));
 
@@ -1649,7 +1662,7 @@ function viewAnalytics() {
 }
 
 // Load analytics data from DB — assignments across the last N months, grouped per employee.
-async function loadAnalyticsData(months) {
+export async function loadAnalyticsData(months) {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth() - months, 1);
   const fromStr = from.getFullYear()+"-"+String(from.getMonth()+1).padStart(2,"0")+"-01";
@@ -1691,7 +1704,7 @@ async function loadAnalyticsData(months) {
   return { rows: Object.values(perEmp) };
 }
 
-function viewQualifications() {
+export function viewQualifications() {
   const wrap = e("div");
   wrap.appendChild(div("page-title",["🎯 כשירות עובדים"],{style:"margin-bottom:16px"}));
   

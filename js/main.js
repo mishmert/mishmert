@@ -24,19 +24,32 @@
 // ══════════════════════════════════════════════════════
 // RENDER
 // ══════════════════════════════════════════════════════
-let _touchStartX = null, _touchStartY = null;
-function setupSwipeGestures() {
+import { S, persistAvailDraft, persistOfflineCache } from './state.js';
+import { $, _closeDialog, div, e, getWeekDates, israelNow, toast } from './utils.js';
+import { checkAuth, viewPasswordReset } from './router.js';
+import { filterNavByFeatures, fmtDate } from './helpers.js';
+import { isManager } from './roles.js';
+import { loadAvailSubmissions, loadEmployees, loadJoinRequests, loadSchedule, loadSwapRequests, loadVacations } from './data.js';
+import { sb } from './sb.js';
+import { viewAnalytics, viewCalendar, viewEmpSettings, viewManagerBlocks, viewQualifications, viewSettings } from './views-secondary.js';
+import { viewConstraintsModal, viewEmpView, viewEmployees, viewExportModal, viewHeader, viewHome, viewPreviewSelectModal, viewPublishModal, viewSchedule, viewSwaps, viewVacations } from './views-main.js';
+import { viewLoading, viewLogin, viewMfaChallenge, viewMfaEnroll } from './views-auth.js';
+import { DAYS } from './constants.js';
+import { sendEmail } from './audit.js';
+
+export let _touchStartX = null, _touchStartY = null;
+export function setupSwipeGestures() {
   document.removeEventListener("touchstart", _onTouchStart);
   document.removeEventListener("touchend", _onTouchEnd);
   document.addEventListener("touchstart", _onTouchStart, {passive:true});
   document.addEventListener("touchend", _onTouchEnd, {passive:true});
 }
-function _onTouchStart(e) {
+export function _onTouchStart(e) {
   if (e.touches.length !== 1) return;
   _touchStartX = e.touches[0].clientX;
   _touchStartY = e.touches[0].clientY;
 }
-function _onTouchEnd(e) {
+export function _onTouchEnd(e) {
   if (_touchStartX == null) return;
   const dx = e.changedTouches[0].clientX - _touchStartX;
   const dy = e.changedTouches[0].clientY - _touchStartY;
@@ -75,7 +88,7 @@ function _onTouchEnd(e) {
   }
 }
 
-function render() {
+export function render() {
   // Persist current avail-draft (cheap; no-op when nothing to save).
   persistAvailDraft();
   const app = $("app");
@@ -301,7 +314,7 @@ if ("serviceWorker" in navigator) {
 }
 
 // AUTO-REMINDER CHECK
-async function checkAutoReminder() {
+export async function checkAutoReminder() {
   if (!isManager()) return;
   const biz = S.business;
   if (!biz) return;
@@ -330,10 +343,10 @@ async function checkAutoReminder() {
 }
 
 // SILENT REFRESH — reload data after actions + every 30 seconds
-let _autoRefreshTimer = null;
-let _refreshDebounce = null;
+export let _autoRefreshTimer = null;
+export let _refreshDebounce = null;
 
-function isUserBusy() {
+export function isUserBusy() {
   if (S.selectedCell) return true;
   if (S.constraintsEmp) return true;
   if (S.showAddEmp) return true;
@@ -357,7 +370,7 @@ function isUserBusy() {
   return false;
 }
 
-function silentRefresh() {
+export function silentRefresh() {
   clearTimeout(_refreshDebounce);
   _refreshDebounce = setTimeout(async () => {
     if (!S.user || S.view === "login" || S.view === "loading") return;
@@ -378,7 +391,7 @@ function silentRefresh() {
   }, 1500);
 }
 
-function startAutoRefresh() {
+export function startAutoRefresh() {
   if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
   _autoRefreshTimer = setInterval(() => {
     if (!isUserBusy()) silentRefresh();
@@ -388,17 +401,17 @@ function startAutoRefresh() {
 // ═══ Session timeout — force re-login (and 2FA) after 30 min of inactivity ═══
 // Reasoning: Supabase sessions last for hours/days by default. For a security-sensitive
 // SOC environment, require password + 2FA every 30 minutes of no interaction.
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
-let _lastActivityMs = Date.now();
-let _sessionTimeoutTimer = null;
-function bumpActivity() { _lastActivityMs = Date.now(); }
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+export let _lastActivityMs = Date.now();
+export let _sessionTimeoutTimer = null;
+export function bumpActivity() { _lastActivityMs = Date.now(); }
 // Activity events — include input/change/focus so filling a long form while the iOS
 // date-wheel is open (no scroll/keydown) still counts as activity and avoids a
 // mid-form session timeout.
 ["mousedown","keydown","touchstart","touchmove","scroll","input","change","focus","pointerdown"].forEach(ev =>
   window.addEventListener(ev, bumpActivity, { passive: true, capture: true })
 );
-function startSessionTimeout() {
+export function startSessionTimeout() {
   if (_sessionTimeoutTimer) clearInterval(_sessionTimeoutTimer);
   _lastActivityMs = Date.now();
   _sessionTimeoutTimer = setInterval(async () => {

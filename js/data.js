@@ -29,7 +29,16 @@
 
 "use strict";
 
-async function loadAll(user) {
+import { SHIFTS, SHIFT_BY_ID, SHIFT_LABELS, WEEKEND_SHIFTS, getShiftsForDate } from './constants.js';
+import { checkAutoReminder, isUserBusy, render, startAutoRefresh } from './main.js';
+import { isManager } from './roles.js';
+import { applyDeepLink } from './router.js';
+import { sb } from './sb.js';
+import { S, persistOfflineCache, restoreAvailDraft, restoreOfflineCache } from './state.js';
+import { fmtYMD, friendlyError, getWeekDates, shiftDurationHours, toast } from './utils.js';
+import { _deepLinkUrl } from './email.js';
+
+export async function loadAll(user) {
   S.user = user;
 
   // ═══ 2FA gate ═══
@@ -150,8 +159,8 @@ async function loadAll(user) {
 // ══════════════════════════════════════════════════════
 // REALTIME — Supabase live subscriptions
 // ══════════════════════════════════════════════════════
-let _realtimeChannels = [];
-function setupRealtime() {
+export let _realtimeChannels = [];
+export function setupRealtime() {
   // Clean old channels
   _realtimeChannels.forEach(ch => sb.removeChannel(ch));
   _realtimeChannels = [];
@@ -189,7 +198,7 @@ function setupRealtime() {
   _realtimeChannels.push(schedChannel);
 }
 
-async function loadInvitations() {
+export async function loadInvitations() {
   if (!S.profile?.business_id || !isManager()) return;
   const { data } = await sb.from("invitations")
     .select("*")
@@ -198,7 +207,7 @@ async function loadInvitations() {
   S.invitations = data || [];
 }
 
-async function loadEmployees() {
+export async function loadEmployees() {
   if (!S.profile?.business_id) return;
   const { data } = await sb.from("profiles")
     .select("*").eq("business_id", S.profile.business_id)
@@ -211,7 +220,7 @@ async function loadEmployees() {
   });
 }
 
-async function loadVacations() {
+export async function loadVacations() {
   if (!S.profile?.business_id) return;
   const { data } = await sb.from("vacations").select("*").eq("business_id", S.profile.business_id);
   S.vacations = data || [];
@@ -219,7 +228,7 @@ async function loadVacations() {
 
 // Personal monthly summary for an employee: shift count/hours breakdown + vacation days used.
 // Only counts PUBLISHED schedules, matching what an employee is allowed to see elsewhere.
-async function loadMyMonthData(empId, monthInfo) {
+export async function loadMyMonthData(empId, monthInfo) {
   const empty = { shifts: [], totalHours: 0, byShift: {}, vacationDays: 0 };
   const bizId = S.profile?.business_id;
   if (!bizId || !empId) return empty;
@@ -274,9 +283,9 @@ async function loadMyMonthData(empId, monthInfo) {
 // ══════════════════════════════════════════════════════
 // Public VAPID key — safe to embed client-side (pairs with the private key kept
 // only as an Edge Function secret on Supabase).
-const VAPID_PUBLIC_KEY = "BDXz-WWumCD7MRs7GFlenjr3jhk7Qmwmk_TAwdSHHu9Rel2pt7cJj7FJsy9CBMYX4FhttjTus2f3HNQDVLB5mhI";
+export const VAPID_PUBLIC_KEY = "BDXz-WWumCD7MRs7GFlenjr3jhk7Qmwmk_TAwdSHHu9Rel2pt7cJj7FJsy9CBMYX4FhttjTus2f3HNQDVLB5mhI";
 
-function _urlBase64ToUint8Array(base64String) {
+export function _urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
@@ -285,7 +294,7 @@ function _urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-async function enablePushNotifications() {
+export async function enablePushNotifications() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     toast("הדפדפן הזה לא תומך בהתראות Push", "err");
     return;
@@ -327,7 +336,7 @@ async function enablePushNotifications() {
   render();
 }
 
-async function disablePushNotifications() {
+export async function disablePushNotifications() {
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
@@ -344,7 +353,7 @@ async function disablePushNotifications() {
 
 // Send a push notification to one employee, respecting the same per-business
 // notification toggles used for email (S.business.notification_settings).
-async function sendPush(type, employeeId, data) {
+export async function sendPush(type, employeeId, data) {
   if (!employeeId) return;
   const settingMap = {
     "schedule_published": "notif_publish",
@@ -380,7 +389,7 @@ async function sendPush(type, employeeId, data) {
   }
 }
 
-function _pushContent(type, data) {
+export function _pushContent(type, data) {
   switch (type) {
     case "schedule_published":
       return { title: "📅 סידור סופי פורסם", body: "שבוע " + (data.weekLabel || "") };
@@ -408,14 +417,14 @@ function _pushContent(type, data) {
 // ══════════════════════════════════════════════════════
 // SHIFT CHAT — small coordination thread per date+shift (e.g. "who's bringing equipment")
 // ══════════════════════════════════════════════════════
-async function loadAvailSubmissions() {
+export async function loadAvailSubmissions() {
   if (!S.profile?.business_id) return;
   const { data } = await sb.from("availability_submissions").select("*")
     .eq("business_id", S.profile.business_id).order("created_at", {ascending:false});
   S.availSubmissions = data || [];
 }
 
-async function loadSwapRequests() {
+export async function loadSwapRequests() {
   if (!S.profile?.business_id) return;
   // Load from both tables
   const { data: d1 } = await sb.from("swaps").select("*")
@@ -426,14 +435,14 @@ async function loadSwapRequests() {
   S.swapRequests = d2 || [];
 }
 
-async function loadJoinRequests() {
+export async function loadJoinRequests() {
   if (!S.profile?.business_id) return;
   const { data } = await sb.from("shift_join_requests").select("*")
     .eq("business_id", S.profile.business_id).order("created_at", {ascending:false});
   S.joinRequests = data || [];
 }
 
-async function loadSchedule() {
+export async function loadSchedule() {
   // Clear undo/redo history when loading fresh data
   S.scheduleUndoStack = [];
   S.scheduleRedoStack = [];

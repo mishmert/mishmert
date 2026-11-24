@@ -29,7 +29,23 @@
 // ── HEADER ──
 "use strict";
 
-function viewHeader() {
+import { addEmployee, checkJoinRestConflict, checkShiftConflict, checkShiftConflictAsync, copyInviteLink, createInvitation, deleteEmployee, deleteVacRequest, describePartialVac, processJoinRequest, publishWeek, renameEmployee, requestJoinShift, resendInvitation, resetPassword, revokeInvitation, saveConstraints, submitAvailability, toggleCellEmp, toggleLock, updateVacStatus } from './actions.js';
+import { handleLogout, logAction, saveScheduleToDB, sendEmail } from './audit.js';
+import { BLOCK_SHIFTS, DAYS, DAY_SHIFT_OVERRIDES, SHIFTS, SHIFT_BY_ID, WEEKEND_SHIFTS, ec, getHoliday, getShiftsForDate } from './constants.js';
+import { loadEmployees, loadInvitations, loadMyMonthData, loadSchedule, loadSwapRequests, loadVacations } from './data.js';
+import { _parseNote, escHtml, exportMyShiftsToCalendar, exportScheduleCSV, exportSchedulePDF, exportScheduleWhatsApp } from './export.js';
+import { _blockPresetBase, empIdx, filterNavByFeatures, fmtDate, getNotifiedManagers, getTimeBasedGreeting, isFeatureEnabled, schedulableEmployees } from './helpers.js';
+import { canRedo, canUndo, pushScheduleHistory, redoSchedule, undoSchedule } from './history.js';
+import { render, silentRefresh } from './main.js';
+import { getEmp, invalidateMemo } from './memo.js';
+import { getActiveEmpId, getActiveProfile, isManager } from './roles.js';
+import { sb } from './sb.js';
+import { runSmartSchedule } from './scheduler.js';
+import { S } from './state.js';
+import { btn, div, e, friendlyError, getMonthInfo, getWeekDates, haptic, israelNow, israelTodayIso, israelYear, skeletonSchedule, toast, today, uiConfirm, uiPrompt } from './utils.js';
+import { viewEmpVacations } from './views-secondary.js';
+
+export function viewHeader() {
   const pendingVacs = S.vacations.filter(v=>v.status==="pending").length;
   const pendingSwaps = (S.swaps||[]).filter(s=>s.status==="pending_manager" || s.status==="pending_peer").length;
 
@@ -122,7 +138,7 @@ const tabs = empOnly ? [
 }
 
 // ── HOME ──
-function viewHome() {
+export function viewHome() {
   const wd = getWeekDates(S.weekOffset);
   const weekStart = wd[0];
   const isPublished = S.publishedWeeks.has(weekStart);
@@ -376,7 +392,7 @@ function viewHome() {
 }
 
 // ── SCHEDULE ──
-function viewSchedule() {
+export function viewSchedule() {
   const wd = getWeekDates(S.weekOffset);
   const wdDisplay = wd;
   const weekStart = wd[0];
@@ -811,7 +827,7 @@ function viewSchedule() {
   return wrap;
 }
 
-function viewScheduleDayMobile(wd) {
+export function viewScheduleDayMobile(wd) {
   const wrap = e("div",{class:"sched-day-view",style:"display:block"});
   if (S.schedDayIdx == null || S.schedDayIdx < 0 || S.schedDayIdx > 6) S.schedDayIdx = 0;
   const date = wd[S.schedDayIdx];
@@ -1018,7 +1034,7 @@ function viewScheduleDayMobile(wd) {
   return wrap;
 }
 
-function viewCellEditor(date, shiftId) {
+export function viewCellEditor(date, shiftId) {
   const shift = SHIFT_BY_ID[shiftId];
   const assignedIds = S.schedule[date]?.[shiftId] || [];
   const editor = div("cell-editor");
@@ -1332,7 +1348,7 @@ function viewCellEditor(date, shiftId) {
   return editor;
 }
 
-function viewWorkload(wd) {
+export function viewWorkload(wd) {
   const counts = {};
   S.employees.forEach(emp => { counts[emp.id] = 0; });
   wd.forEach(d => SHIFTS.forEach(sh => {
@@ -1373,7 +1389,7 @@ function viewWorkload(wd) {
 }
 
 // ── EMPLOYEES ──
-function viewEmployees() {
+export function viewEmployees() {
   const wrap = e("div");
   wrap.appendChild(div("section-header",[
     div("page-title",["👥 עובדים"]),
@@ -1517,7 +1533,7 @@ function viewEmployees() {
 }
 
 // ── VACATIONS ──
-function viewVacations() {
+export function viewVacations() {
   const wrap = e("div");
   wrap.appendChild(div("page-title",["🌴 היעדרויות"],{style:"margin-bottom:16px"}));
 
@@ -1863,7 +1879,7 @@ function viewVacations() {
 }
 
 // ── Edit / cancel approved vacations ──
-async function editApprovedVacation(vac) {
+export async function editApprovedVacation(vac) {
   const types = { vacation: "חופשה", reserve: "מילואים", exam: "מבחן" };
   const emp = getEmp(vac.employee_id);
   const empName = emp?.name || "עובד";
@@ -1919,7 +1935,7 @@ async function editApprovedVacation(vac) {
   render();
 }
 
-async function cancelApprovedVacation(vac) {
+export async function cancelApprovedVacation(vac) {
   const types = { vacation: "חופשה", reserve: "מילואים", exam: "מבחן" };
   const emp = getEmp(vac.employee_id);
   const empName = emp?.name || "עובד";
@@ -1950,7 +1966,7 @@ async function cancelApprovedVacation(vac) {
 }
 
 // ── SWAPS ──
-async function processManagerDecision(swap, isApproved, rejectReason) {
+export async function processManagerDecision(swap, isApproved, rejectReason) {
   if (isApproved) {
     // אימות אחרון לפני אישור בסידור
     if (swap.target_date && swap.giver_id) { // חילוף הדדי
@@ -2024,7 +2040,7 @@ async function processManagerDecision(swap, isApproved, rejectReason) {
 }
 
 // ── אישור/דחייה של העובד השני (Peer) ──
-async function processPeerDecision(swap, isApproved) {
+export async function processPeerDecision(swap, isApproved) {
   const newStatus = isApproved ? "pending_manager" : "rejected";
   const { error } = await sb.from("swaps").update({status: newStatus}).eq("id", swap.id);
   if (error) { toast(friendlyError(error), "err"); return; }
@@ -2077,9 +2093,9 @@ async function processPeerDecision(swap, isApproved) {
 }
 
 // Cache for schedule data loaded for swap weeks (other than current)
-const _swapWeekCache = {};  // { weekStartStr: { date: { shift: [empIds] } } }
+export const _swapWeekCache = {};  // { weekStartStr: { date: { shift: [empIds] } } }
 
-async function loadScheduleForSwapWeek(weekOffset) {
+export async function loadScheduleForSwapWeek(weekOffset) {
   const wd = getWeekDates(weekOffset);
   const weekStart = wd[0];
   
@@ -2123,11 +2139,11 @@ async function loadScheduleForSwapWeek(weekOffset) {
 }
 
 // Invalidate swap cache when schedule changes
-function invalidateSwapCache() {
+export function invalidateSwapCache() {
   for (const key in _swapWeekCache) delete _swapWeekCache[key];
 }
 
-function viewSwaps(forceEmployee) {
+export function viewSwaps(forceEmployee) {
   const wrap = e("div");
   wrap.appendChild(div("page-title", ["🔄 חילופים והצטרפות"], {style:"margin-bottom:16px"}));
 
@@ -2624,7 +2640,7 @@ function viewSwaps(forceEmployee) {
 }
 
 // ── SUPER ADMIN — cross-business management (platform level) ──
-const SA_FEATURE_LABELS = {
+export const SA_FEATURE_LABELS = {
   qualifications: "🎯 כשירות והסמכות",
   chat: "💬 צ'אט משמרת",
   swaps: "🔄 חילופי משמרות",
@@ -2634,7 +2650,7 @@ const SA_FEATURE_LABELS = {
 
 
 // ── EMPLOYEE VIEW ──
-function viewEmpView() {
+export function viewEmpView() {
   const wrap = e("div",{style:"width:100%"});
   const selfOnly = S.profile?.role === "employee" || S.testAsEmployee;
 
@@ -3607,7 +3623,7 @@ function viewEmpView() {
 }
 
 // ── CONSTRAINTS MODAL ──
-function viewConstraintsModal() {
+export function viewConstraintsModal() {
   const emp = S.constraintsEmp;
   if (!emp) return null;
 
@@ -3837,7 +3853,7 @@ function viewConstraintsModal() {
 }
 
 // ── INVITATION MODAL ──
-function viewPreviewSelectModal() {
+export function viewPreviewSelectModal() {
   const managers = S.employees.filter(e => 
     (e.role === "admin" || e.role === "manager") && e.email
   );
@@ -3932,7 +3948,7 @@ function viewPreviewSelectModal() {
   }}});
 }
 
-function viewInviteModal() {
+export function viewInviteModal() {
   return div("modal-bg",[
     div("modal",[
       div("modal-header",[
@@ -3971,7 +3987,7 @@ function viewInviteModal() {
 }
 
 // ── PUBLISH MODAL ──
-function viewExportModal() {
+export function viewExportModal() {
   const exportType = S.showExportModal; // "pdf", "csv", or "whatsapp"
   const currentOffset = S.weekOffset;
   // Show options: -2, -1, 0, +1, +2 weeks
@@ -4028,7 +4044,7 @@ function viewExportModal() {
   ],{onclick:ev=>{if(ev.target.classList.contains("modal-bg")){S.showExportModal=null;render();}}});
 }
 
-function viewPublishModal() {
+export function viewPublishModal() {
   const wd = getWeekDates(S.weekOffset);
   const weekStart = wd[0];
   const currentType = S.schedPublishType?.[weekStart];

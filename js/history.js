@@ -15,9 +15,16 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-const MAX_HISTORY = 20;
+import { logAction } from './audit.js';
+import { render } from './main.js';
+import { sb } from './sb.js';
+import { S } from './state.js';
+import { getWeekDates, toast, uiConfirm } from './utils.js';
+import { invalidateSwapCache } from './views-main.js';
 
-function _snapshotCurrentSchedule(label) {
+export const MAX_HISTORY = 20;
+
+export function _snapshotCurrentSchedule(label) {
   // Deep-clone the locks (Set → array) so undo/redo restore not just the shifts themselves
   // but also which of them were manual (locked from auto-schedule).
   const locksClone = {};
@@ -38,23 +45,23 @@ function _snapshotCurrentSchedule(label) {
 
 // Call this BEFORE making a change, with a label describing the change about to happen.
 // Pushes the PRE-change state onto the undo stack and clears the redo stack.
-function pushScheduleHistory(actionLabel) {
+export function pushScheduleHistory(actionLabel) {
   if (!S.scheduleUndoStack) S.scheduleUndoStack = [];
   S.scheduleUndoStack.push(_snapshotCurrentSchedule(actionLabel));
   if (S.scheduleUndoStack.length > MAX_HISTORY) S.scheduleUndoStack.shift();
   S.scheduleRedoStack = [];
 }
 
-function canUndo() {
+export function canUndo() {
   return !!(S.scheduleUndoStack && S.scheduleUndoStack.length > 0);
 }
 
-function canRedo() {
+export function canRedo() {
   return !!(S.scheduleRedoStack && S.scheduleRedoStack.length > 0);
 }
 
 // Undo - pop the last pre-change snapshot and restore it; push current live state to redo stack
-async function undoSchedule() {
+export async function undoSchedule() {
   if (!canUndo()) {
     toast("אין מה לבטל", "err");
     return;
@@ -68,7 +75,7 @@ async function undoSchedule() {
 }
 
 // Redo - pop the last undone state and restore it; push current live state back to undo stack
-async function redoSchedule() {
+export async function redoSchedule() {
   if (!canRedo()) {
     toast("אין מה לחזור", "err");
     return;
@@ -82,7 +89,7 @@ async function redoSchedule() {
 }
 
 // Restore a snapshot — both in memory and to DB
-async function restoreSnapshot(snapshot) {
+export async function restoreSnapshot(snapshot) {
   if (!snapshot) return;
   
   // Restore state
@@ -147,7 +154,7 @@ async function restoreSnapshot(snapshot) {
 }
 
 // Undo the last auto-schedule run
-async function undoAutoSchedule() {
+export async function undoAutoSchedule() {
   if (!S.scheduleBackup) {
     toast("אין שיבוץ לבטל", "err");
     return;
