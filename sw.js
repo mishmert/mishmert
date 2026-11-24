@@ -1,8 +1,10 @@
-const CACHE = "meshmeret-v4";
+const CACHE = "meshmeret-v5";
 const ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
+  "/js/constants.js",
+  "/js/utils.js",
   "/manifest.json"
 ];
 
