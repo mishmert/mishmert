@@ -1,40 +1,37 @@
-const CACHE = "meshmeret-v16";
+// Service worker v17 — NUCLEAR RESET
+// Wipes every cache on install (not just the previous named one), which fixes
+// clients stuck on a cache name they don't recognize. Takes over all open
+// windows immediately via skipWaiting + clients.claim.
+
+const CACHE = "meshmeret-v17";
 const ASSETS = [
   "/",
   "/index.html",
-  "/styles.css",
-  "/js/sb.js",
-  "/js/constants.js",
-  "/js/utils.js",
-  "/js/state.js",
-  "/js/helpers.js",
-  "/js/roles.js",
-  "/js/router.js",
-  "/js/data.js",
-  "/js/email.js",
-  "/js/audit.js",
-  "/js/scheduler.js",
-  "/js/history.js",
-  "/js/actions.js",
-  "/js/memo.js",
-  "/js/export.js",
-  "/js/views-auth.js",
-  "/js/views-main.js",
-  "/js/views-secondary.js",
-  "/js/main.js",
   "/manifest.json"
 ];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(()=>{}));
+  // Wipe EVERY existing cache before (re-)populating ours.
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    const cache = await caches.open(CACHE);
+    try { await cache.addAll(ASSETS); } catch (err) { /* best effort */ }
+  })());
   self.skipWaiting();
 });
 
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))
-  ));
-  self.clients.claim();
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+    // Force every open client to reload so they get the fresh HTML.
+    const clients = await self.clients.matchAll({ type: "window" });
+    for (const c of clients) {
+      try { c.navigate(c.url); } catch (_) {}
+    }
+  })());
 });
 
 self.addEventListener("fetch", e => {
@@ -57,7 +54,6 @@ self.addEventListener("fetch", e => {
 self.addEventListener("push", e => {
   let payload = { title: "🔔 עדכון חדש", body: "", url: "/" };
   try { payload = { ...payload, ...e.data.json() }; } catch (err) {}
-
   e.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
