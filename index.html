@@ -20,8 +20,14 @@ img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-0.1em;displ
 <!-- Twemoji: parses emoji chars and swaps them with SVG images (Twitter emoji set). Guarantees
      identical, colorful emoji everywhere regardless of OS (Windows without Segoe UI Emoji,
      older Androids, Linux, ChromeOS, etc). Loaded async so it never blocks page render. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js" crossorigin="anonymous" async></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- MSH-202648-005: version is pinned and integrity-locked. If a CDN
+     compromise swaps the file, the browser refuses to execute it. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"
+        integrity="sha384-32KMvAMS4DUBcQtHG6fzADguo/tpN1Nh6BAJa2QqZc6/i0K+YPQE+bWiqBRAWuFs"
+        crossorigin="anonymous" async></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"
+        integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o"
+        crossorigin="anonymous"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F172A">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1059,7 +1065,7 @@ function friendlyError(err) {
   if (low.includes("invalid login") || low.includes("invalid credentials")) return "מייל או סיסמה שגויים";
   if (low.includes("email not confirmed")) return "המייל טרם אומת — בדוק בתיבת הדואר";
   if (low.includes("email rate limit")) return "נשלחו יותר מדי מיילים — נסה בעוד כמה דקות";
-  if (low.includes("password") && low.includes("short")) return "סיסמה קצרה מדי (לפחות 6 תווים)";
+  if (low.includes("password") && low.includes("short")) return "סיסמה קצרה מדי (לפחות 10 תווים)";
   if (low.includes("network") || low.includes("failed to fetch")) return "בעיית רשת — בדוק את החיבור לאינטרנט";
   if (low.includes("jwt") || low.includes("expired") || low.includes("invalid token")) return "ההתחברות פגה — נא להתחבר מחדש";
   if (low.includes("too many") || low.includes("rate limit") || low.includes("429")) return "יותר מדי בקשות — המתן רגע ונסה שוב";
@@ -1073,7 +1079,10 @@ function friendlyError(err) {
 // Strict policy was removed because employees couldn't reset passwords in practice.
 function validatePassword(password) {
   if (!password) return "נא להזין סיסמה";
-  if (password.length < 6) return "סיסמה חייבת להיות לפחות 6 תווים";
+  // MSH-202648-010: NIST SP 800-63B §5.1.1 min = 8; we raise to 10 for a
+  // SOC-team tool. Server-side min should also be set to 10 in the
+  // Supabase Dashboard (Authentication → Policies → Password Requirements).
+  if (password.length < 10) return "סיסמה חייבת להיות לפחות 10 תווים";
   if (password.length > 72) return "סיסמה ארוכה מדי";
   return null;
 }
@@ -2405,12 +2414,12 @@ function viewPasswordReset() {
   ]));
 
   const card = div("card");
-  const p1 = e("input",{class:"fi",type:"password",placeholder:"סיסמה חדשה (לפחות 6 תווים)",autocomplete:"new-password",style:"margin-bottom:12px"});
+  const p1 = e("input",{class:"fi",type:"password",placeholder:"סיסמה חדשה (לפחות 10 תווים)",autocomplete:"new-password",style:"margin-bottom:12px"});
   const p2 = e("input",{class:"fi",type:"password",placeholder:"אישור סיסמה חדשה",autocomplete:"new-password",style:"margin-bottom:12px"});
   card.appendChild(p1);
   card.appendChild(p2);
   card.appendChild(e("div",{style:"font-size:11px;color:#64748B;margin-bottom:12px;line-height:1.5"},
-    "💡 לפחות 6 תווים"));
+    "💡 לפחות 10 תווים"));
   card.appendChild(btn("btn-primary","✓ שמור סיסמה חדשה", async () => {
     const newPass = p1.value;
     const confPass = p2.value;
@@ -2799,10 +2808,15 @@ async function sendPush(type, employeeId, data) {
 
   const content = _pushContent(type, data || {});
   try {
+    // MSH-202648-001: the Edge Function requires the caller's session JWT so
+    // it can authorise the push against the caller's tenant. The anon key
+    // alone is rejected.
+    const sess = (await sb.auth.getSession())?.data?.session;
+    if (!sess?.access_token) { console.warn("🔔 Push skipped: no session"); return; }
     await fetch("https://zszlqoisokjgvplrcbic.supabase.co/functions/v1/rapid-action", {
       method: "POST",
       mode: "cors",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + SUPABASE_KEY },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + sess.access_token },
       body: JSON.stringify({
         type: "push",
         to: [employeeId],
@@ -2976,12 +2990,19 @@ async function _processEmailQueue() {
   while (_emailQueue.length > 0) {
     const { type, toEmail, data, retries } = _emailQueue.shift();
     try {
+      // MSH-202648-001: the Edge Function requires the caller's session JWT so
+      // it can gate recipient against the caller's tenant.
+      const sess = (await sb.auth.getSession())?.data?.session;
+      if (!sess?.access_token) {
+        console.warn("📧 Email skipped: no active session");
+        continue;
+      }
       const resp = await fetch("https://zszlqoisokjgvplrcbic.supabase.co/functions/v1/rapid-action", {
         method: "POST",
         mode: "cors",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Authorization": "Bearer " + sess.access_token,
         },
         body: JSON.stringify({ type, to: toEmail, data: { ...data, appUrl: _deepLinkUrl(type) } })
       });
@@ -4430,7 +4451,7 @@ function viewLogin() {
       e("input",{name:"emailDisplay",type:"email",value:S.pendingInvitation?.email||"",disabled:"disabled",style:"opacity:0.7;cursor:not-allowed"})
     ]);
     form.appendChild(emailField);
-    form.appendChild(loginField("בחר סיסמה","pass","password","לפחות 6 תווים",true));
+    form.appendChild(loginField("בחר סיסמה","pass","password","לפחות 10 תווים",true));
   } else if (isReg) {
     if (S.pendingBizInvite?.note) {
       card.appendChild(e("div",{style:"background:#3B82F622;border:1px solid #3B82F644;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#93C5FD"},"📝 "+S.pendingBizInvite.note));
@@ -9188,6 +9209,10 @@ function _ensureHtml2Canvas() {
     if (window.html2canvas) { resolve(); return; }
     const s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+    // MSH-202648-005: SRI on dynamically-injected scripts too. If the CDN
+    // ever swaps the file, the browser blocks the execution.
+    s.integrity = "sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H";
+    s.crossOrigin = "anonymous";
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("html2canvas failed to load"));
     document.head.appendChild(s);
@@ -9912,12 +9937,12 @@ function viewSettings() {
 
   // Change password
   const passCard = div("card",[e("div",{class:"card-title"},"🔐 שינוי סיסמה")]);
-  const newPassInp = e("input",{class:"fi",type:"password",placeholder:"סיסמה חדשה (לפחות 6 תווים)",style:"margin-bottom:12px"});
+  const newPassInp = e("input",{class:"fi",type:"password",placeholder:"סיסמה חדשה (לפחות 10 תווים)",style:"margin-bottom:12px"});
   const confPassInp = e("input",{class:"fi",type:"password",placeholder:"אשר סיסמה חדשה",style:"margin-bottom:12px"});
   passCard.appendChild(div("form-col",[e("label",{class:"form-label"},"סיסמה חדשה"),newPassInp],{style:"margin-bottom:10px"}));
   passCard.appendChild(div("form-col",[e("label",{class:"form-label"},"אישור סיסמה"),confPassInp],{style:"margin-bottom:12px"}));
   passCard.appendChild(e("div",{style:"font-size:11px;color:#64748B;margin-bottom:10px;line-height:1.6"},
-    "💡 לפחות 6 תווים"));
+    "💡 לפחות 10 תווים"));
   passCard.appendChild(btn("btn-add","🔐 שמור סיסמה חדשה",async()=>{
     const newPass = newPassInp.value;
     const confPass = confPassInp.value;
@@ -10358,12 +10383,12 @@ function viewEmpSettings() {
 
   // Change password
   const passCard = div("card",[e("div",{class:"card-title"},"🔐 שינוי סיסמה")]);
-  const newPass = e("input",{class:"fi",type:"password",placeholder:"סיסמה חדשה (לפחות 6 תווים)",style:"margin-bottom:10px"});
+  const newPass = e("input",{class:"fi",type:"password",placeholder:"סיסמה חדשה (לפחות 10 תווים)",style:"margin-bottom:10px"});
   const confPass = e("input",{class:"fi",type:"password",placeholder:"אישור סיסמה חדשה",style:"margin-bottom:12px"});
   passCard.appendChild(div("form-col",[e("label",{class:"form-label"},"סיסמה חדשה"),newPass],{style:"margin-bottom:10px"}));
   passCard.appendChild(div("form-col",[e("label",{class:"form-label"},"אישור סיסמה"),confPass],{style:"margin-bottom:12px"}));
   passCard.appendChild(e("div",{style:"font-size:11px;color:#64748B;margin-bottom:10px;line-height:1.6"},
-    "💡 לפחות 6 תווים"));
+    "💡 לפחות 10 תווים"));
   passCard.appendChild(btn("btn-add","🔐 שמור סיסמה חדשה",async()=>{
     const pwErr = validatePassword(newPass.value);
     if (pwErr) { toast(pwErr, "err"); return; }
