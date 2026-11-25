@@ -287,10 +287,24 @@ test.describe('asset integrity', () => {
     }
   });
 
-  test('styles.css returns 200 with text/css content-type', async ({ page }) => {
-    const resp = await page.request.get('/styles.css?v=20261124-1927');
-    expect(resp.status()).toBe(200);
-    const ct = resp.headers()['content-type'] || '';
-    expect(ct).toMatch(/css/);
+  test('page stylesheet(s) return 200 with text/css', async ({ page, request }) => {
+    // Pull every <link rel="stylesheet"> URL from the served HTML — covers
+    // classic (styles.css) and bundled (assets/index-HASH.css) layouts.
+    const html = await (await request.get('/')).text();
+    const hrefs = [];
+    const linkRegex = /<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g;
+    let m;
+    while ((m = linkRegex.exec(html)) !== null) {
+      const href = m[1];
+      if (href.startsWith('http://') || href.startsWith('https://')) continue; // Google Fonts etc
+      hrefs.push(href.replace(/^\.?\//, ''));
+    }
+    expect(hrefs.length, 'no local stylesheets in index.html').toBeGreaterThan(0);
+    for (const h of hrefs) {
+      const resp = await request.get('/' + h);
+      expect(resp.status(), `/${h} did not return 200`).toBe(200);
+      const ct = resp.headers()['content-type'] || '';
+      expect(ct, `/${h} content-type was ${ct}`).toMatch(/css/);
+    }
   });
 });
