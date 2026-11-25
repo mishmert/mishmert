@@ -24,6 +24,9 @@
 // ══════════════════════════════════════════════════════
 // RENDER
 // ══════════════════════════════════════════════════════
+// Side-effect import: initializes Sentry if VITE_SENTRY_DSN is set at build.
+// Loaded first so a crash in any later module import still gets reported.
+import './sentry.js';
 import { S, persistAvailDraft, persistOfflineCache } from './state.js';
 import { loadAvailSubmissions, loadEmployees, loadJoinRequests, loadSchedule, loadSwapRequests, loadVacations } from './data.js';
 import { $, _closeDialog, div, e, getWeekDates, israelNow, toast } from './utils.js';

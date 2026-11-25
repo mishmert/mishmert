@@ -44,6 +44,11 @@ jobs:
 
       - name: Build with Vite
         run: npm run build
+        env:
+          # Populates Sentry's DSN at bundle time. Set VITE_SENTRY_DSN under
+          # Settings → Secrets and variables → Actions. If unset, sentry.js's
+          # init becomes a no-op and the bundle is smaller.
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
       # Run the Playwright suite against the BUILT dist/, not the source.
       # The playwright.config.js webServer serves dist/ when VITE_SERVE_DIST=1

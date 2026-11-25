@@ -25,6 +25,7 @@ import { friendlyError, getWeekDates, toast, validatePassword } from './utils.js
 import { invalidateSwapCache } from './views-main.js';
 import { render, silentRefresh } from './main.js';
 import { loadAll } from './data.js';
+import { clearSentryUser } from './sentry.js';
 export async function logAction(action, details) {
   if (!S.user || !S.profile?.business_id) return;
   try {
@@ -231,6 +232,7 @@ export async function handleAcceptInvitation(name, password, token, email) {
 }
 
 export async function handleLogout() {
+  clearSentryUser();
   await sb.auth.signOut();
   resetState({ view:"login", user:null, profile:null, business:null, employees:[], vacations:[], schedule:{}, publishedWeeks:new Set() });
   render();

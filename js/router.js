@@ -26,6 +26,7 @@ import { S } from './state.js';
 import { sb } from './sb.js';
 import { render } from './main.js';
 import { loadAll } from './data.js';
+import { setSentryUser } from './sentry.js';
 export function applyDeepLink() {
   let goto = null;
   try {
@@ -158,6 +159,7 @@ export async function checkAuth() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { S.view="login"; render(); return; }
   await loadAll(session.user);
+  setSentryUser(session.user, S.profile);
 }
 
 // ═══ PASSWORD RESET VIEW — shown after clicking the email reset link ═══
