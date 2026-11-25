@@ -516,12 +516,64 @@ export function viewMfaChallenge() {
         const code = codeInput.value.trim();
         if (code.length !== 6) return toast("קוד חייב 6 ספרות", "err");
         try {
-          const { data: factors } = await sb.auth.mfa.listFactors();
-          const factor = (factors?.totp || [])[0];
+          // ── Locate the user's verified TOTP factor ──
+          // listFactors() in supabase-js v2.45.4 reads data.totp from the
+          // CACHED user object (sb.auth._session.user.factors). Right after
+          // a fresh password login this cache can briefly be stale or empty
+          // for users whose factor was enrolled in a prior session, which
+          // then shows up as "no authentication factor" even though the
+          // server has a verified factor on record. We handle it with a
+          // three-step fallback: (1) listFactors; if empty, (2) force a
+          // fresh server-side getUser() and read user.factors; if still
+          // empty, (3) refreshSession() then retry listFactors once.
+          let factor = null;
+          let lastErr = null;
+
+          // Attempt 1: normal listFactors (works in ~all cases)
+          try {
+            const { data: factors, error } = await sb.auth.mfa.listFactors();
+            if (error) lastErr = error;
+            factor = (factors?.totp || [])[0] || null;
+          } catch (e) {
+            lastErr = e;
+          }
+
+          // Attempt 2: force a fresh getUser() and inspect user.factors
           if (!factor) {
-            toast("לא נמצא גורם אימות", "err");
+            try {
+              const { data: ud, error: uErr } = await sb.auth.getUser();
+              if (uErr) lastErr = uErr;
+              const list = (ud?.user?.factors || []).filter(
+                (f) => f.factor_type === "totp" && f.status === "verified"
+              );
+              factor = list[0] || null;
+            } catch (e) {
+              lastErr = e;
+            }
+          }
+
+          // Attempt 3: refresh the session then try listFactors one more time
+          if (!factor) {
+            try {
+              await sb.auth.refreshSession();
+              const { data: factors2 } = await sb.auth.mfa.listFactors();
+              factor = (factors2?.totp || [])[0] || null;
+            } catch (e) {
+              lastErr = e;
+            }
+          }
+
+          if (!factor) {
+            console.error("MFA listFactors fallback exhausted:", lastErr);
+            toast(
+              lastErr
+                ? `שגיאת אימות (${lastErr.message || lastErr.name || "לא ידוע"}) — נסה להתחבר שוב`
+                : "לא נמצא גורם אימות — נסה להתנתק ולהתחבר מחדש",
+              "err"
+            );
             return;
           }
+
           const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId: factor.id });
           if (chErr) throw chErr;
           const { error: vErr } = await sb.auth.mfa.verify({
