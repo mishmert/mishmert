@@ -17,15 +17,15 @@
 // Returns the active acting employee ID:
 // - In test-as-employee mode: the viewed employee's ID
 // - Otherwise: the logged-in user's ID
-import { S } from './state.js';
+import { S } from "./state.js";
 export function getActiveEmpId() {
-  return (S.testAsEmployee && S.empViewId) ? S.empViewId : S.user?.id;
+  return S.testAsEmployee && S.empViewId ? S.empViewId : S.user?.id;
 }
 
 // Returns the active acting profile object
 export function getActiveProfile() {
   if (S.testAsEmployee && S.empViewId) {
-    return S.employees.find(e => e.id === S.empViewId) || S.profile;
+    return S.employees.find((e) => e.id === S.empViewId) || S.profile;
   }
   return S.profile;
 }

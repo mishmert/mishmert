@@ -4,43 +4,50 @@
 // which means a fresh deploy always reaches the browser on next load even
 // though the filename changed.
 
-const CACHE = "meshmeret-v22";
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json"
-];
+const CACHE = "meshmeret-v23";
+const ASSETS = ["/", "/index.html", "/manifest.json"];
 
-self.addEventListener("install", e => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k => caches.delete(k)));
-    const cache = await caches.open(CACHE);
-    try { await cache.addAll(ASSETS); } catch (_) {}
-  })());
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      const cache = await caches.open(CACHE);
+      try {
+        await cache.addAll(ASSETS);
+      } catch (_) {}
+    })()
+  );
   self.skipWaiting();
 });
 
-self.addEventListener("activate", e => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
-    await self.clients.claim();
-    const clients = await self.clients.matchAll({ type: "window" });
-    for (const c of clients) {
-      try { c.navigate(c.url); } catch (_) {}
-    }
-  })());
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: "window" });
+      for (const c of clients) {
+        try {
+          c.navigate(c.url);
+        } catch (_) {}
+      }
+    })()
+  );
 });
 
-self.addEventListener("fetch", e => {
+self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   // Network-first so a deploy wins over any stale cache.
   e.respondWith(
     fetch(e.request)
-      .then(resp => {
+      .then((resp) => {
         const clone = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone)).catch(()=>{});
+        caches
+          .open(CACHE)
+          .then((c) => c.put(e.request, clone))
+          .catch(() => {});
         return resp;
       })
       .catch(() => caches.match(e.request))
@@ -50,9 +57,11 @@ self.addEventListener("fetch", e => {
 // ══════════════════════════════════════════════════════
 // PUSH NOTIFICATIONS
 // ══════════════════════════════════════════════════════
-self.addEventListener("push", e => {
+self.addEventListener("push", (e) => {
   let payload = { title: "🔔 עדכון חדש", body: "", url: "/" };
-  try { payload = { ...payload, ...e.data.json() }; } catch (err) {}
+  try {
+    payload = { ...payload, ...e.data.json() };
+  } catch (err) {}
   e.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
@@ -63,16 +72,16 @@ self.addEventListener("push", e => {
       vibrate: [200, 100, 200],
       renotify: true,
       tag: "meshmeret-" + Date.now(),
-      data: { url: payload.url || "/" }
+      data: { url: payload.url || "/" },
     })
   );
 });
 
-self.addEventListener("notificationclick", e => {
+self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = e.notification.data?.url || "/";
   e.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(clientList => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
           client.navigate(url);

@@ -10,16 +10,32 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "check:imports": "eslint js/"
+    "check:imports": "eslint js/",
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
     "acorn": "^8.19.0",
     "eslint": "^10.15.0",
     "globals": "^17.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.2",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
     "vite": "^7.0.0"
   },
   "dependencies": {
     "@sentry/browser": "^11.17.0"
+  },
+  "lint-staged": {
+    "*.{js,html,css,json,md}": [
+      "prettier --write"
+    ],
+    "js/**/*.js": [
+      "eslint --fix"
+    ]
   }
 }

@@ -21,7 +21,7 @@
 // auth sequence), getView falls back to an "unknown view" placeholder that
 // surfaces a visible error rather than a silent crash.
 
-import { e, div } from './utils.js';
+import { e, div } from "./utils.js";
 
 let mainMod = null;
 let secondaryMod = null;
@@ -34,9 +34,13 @@ let loadPromise = null;
 export function preloadAuthenticatedViews() {
   if (loadPromise) return loadPromise;
   loadPromise = Promise.all([
-    import('./views-main.js').then(m => { mainMod = m; }),
-    import('./views-secondary.js').then(m => { secondaryMod = m; }),
-  ]).catch(err => {
+    import("./views-main.js").then((m) => {
+      mainMod = m;
+    }),
+    import("./views-secondary.js").then((m) => {
+      secondaryMod = m;
+    }),
+  ]).catch((err) => {
     // Reset so a later call can retry on recoverable network errors.
     loadPromise = null;
     throw err;
@@ -59,9 +63,13 @@ export function getView(name) {
   if (mainMod && name in mainMod) return mainMod[name];
   if (secondaryMod && name in secondaryMod) return secondaryMod[name];
   // Fallback: visible marker so a mis-wired call doesn't just vanish.
-  return () => div("card", [
-    e("div", { class: "card-title" }, "טוען תצוגה…"),
-    e("div", { style: "color:#94A3B8;font-size:13px" },
-      `view "${name}" not loaded yet — this usually means preloadAuthenticatedViews() has not finished.`),
-  ]);
+  return () =>
+    div("card", [
+      e("div", { class: "card-title" }, "טוען תצוגה…"),
+      e(
+        "div",
+        { style: "color:#94A3B8;font-size:13px" },
+        `view "${name}" not loaded yet — this usually means preloadAuthenticatedViews() has not finished.`
+      ),
+    ]);
 }

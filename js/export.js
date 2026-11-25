@@ -23,18 +23,22 @@
 // Parse a note into tags and free text
 "use strict";
 
-import { S } from './state.js';
-import { sb } from './sb.js';
-import { DAYS, SHIFTS, getShiftsForDate } from './constants.js';
-import { getEmp } from './memo.js';
-import { getWeekDates, toast } from './utils.js';
-import { getActiveProfile } from './roles.js';
-import { fmtDate } from './helpers.js';
+import { S } from "./state.js";
+import { sb } from "./sb.js";
+import { DAYS, SHIFTS, getShiftsForDate } from "./constants.js";
+import { getEmp } from "./memo.js";
+import { getWeekDates, toast } from "./utils.js";
+import { getActiveProfile } from "./roles.js";
+import { fmtDate } from "./helpers.js";
 export function _parseNote(rawNote) {
   if (!rawNote) return { tags: [], text: "" };
   if (rawNote.startsWith("🏷️ ")) {
     const parts = rawNote.split(" | ");
-    const tags = parts[0].replace("🏷️ ","").split(", ").map(t=>t.trim()).filter(Boolean);
+    const tags = parts[0]
+      .replace("🏷️ ", "")
+      .split(", ")
+      .map((t) => t.trim())
+      .filter(Boolean);
     const text = parts.slice(1).join(" | ");
     return { tags, text };
   }
@@ -47,23 +51,33 @@ export async function loadWeekDataForExport(offset, weekStart) {
   let notesData = S.assignmentNotes;
   let hoursData = S.customHours;
   if (offset !== S.weekOffset) {
-    const { data: sched } = await sb.from("schedules")
-      .select("id").eq("business_id", S.profile.business_id).eq("week_start", weekStart).maybeSingle();
+    const { data: sched } = await sb
+      .from("schedules")
+      .select("id")
+      .eq("business_id", S.profile.business_id)
+      .eq("week_start", weekStart)
+      .maybeSingle();
     if (sched) {
-      const { data: assigns } = await sb.from("assignments").select("*").eq("schedule_id", sched.id);
+      const { data: assigns } = await sb
+        .from("assignments")
+        .select("*")
+        .eq("schedule_id", sched.id);
       scheduleData = {};
       notesData = {};
       hoursData = {};
-      (assigns || []).forEach(a => {
+      (assigns || []).forEach((a) => {
         if (!scheduleData[a.date]) scheduleData[a.date] = {};
         if (!scheduleData[a.date][a.shift]) scheduleData[a.date][a.shift] = [];
         scheduleData[a.date][a.shift].push(a.employee_id);
-        const key = a.date+"|"+a.shift+"|"+a.employee_id;
+        const key = a.date + "|" + a.shift + "|" + a.employee_id;
         if (a.note) notesData[key] = a.note;
-        if (a.custom_start && a.custom_end) hoursData[key] = {start:a.custom_start, end:a.custom_end};
+        if (a.custom_start && a.custom_end)
+          hoursData[key] = { start: a.custom_start, end: a.custom_end };
       });
     } else {
-      scheduleData = {}; notesData = {}; hoursData = {};
+      scheduleData = {};
+      notesData = {};
+      hoursData = {};
     }
   }
   return { scheduleData, notesData, hoursData };
@@ -103,41 +117,44 @@ export function buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursDa
   #wa-export-root .hours{font-size:9px;color:#666;display:block;margin-top:1px}
   #wa-export-root .note{font-size:9px;color:#92400E;font-style:italic;display:block;margin-top:1px}
 </style>
-<h1>סידור עבודה — ${escHtml(S.business?.name||"ניהול משמרות")}</h1>
+<h1>סידור עבודה — ${escHtml(S.business?.name || "ניהול משמרות")}</h1>
 <div class="sub">${escHtml(weekLabel)}</div>
 <table>
 <tr><th>משמרת</th>`;
 
-  wd.forEach(date => {
-    const dt = new Date(date+"T00:00:00");
+  wd.forEach((date) => {
+    const dt = new Date(date + "T00:00:00");
     html += `<th>${DAYS[dt.getDay()]}<br><strong>${dt.getDate()}</strong></th>`;
   });
   html += "</tr>";
 
-  SHIFTS.forEach(sh => {
+  SHIFTS.forEach((sh) => {
     html += `<tr><td class="${sh.id}">${sh.label}<br><small>${sh.start}–${sh.end}</small></td>`;
-    wd.forEach(date => {
+    wd.forEach((date) => {
       // Day-specific override hours (Thu-night, Fri, Sat) — show them per-employee
       // when they differ from the row's generic weekday hours.
-      const shForDay = getShiftsForDate(date).find(s => s.id === sh.id) || sh;
+      const shForDay = getShiftsForDate(date).find((s) => s.id === sh.id) || sh;
       const dayHours = shForDay.start + "–" + shForDay.end;
       const genericHours = sh.start + "–" + sh.end;
-      const empIds = scheduleData[date]?.[sh.id]||[];
+      const empIds = scheduleData[date]?.[sh.id] || [];
       html += "<td>";
       if (empIds.length === 0) {
         html += '<span class="empty">—</span>';
       } else {
-        empIds.forEach(id => {
+        empIds.forEach((id) => {
           const emp = getEmp(id);
-          const key = date+"|"+sh.id+"|"+id;
+          const key = date + "|" + sh.id + "|" + id;
           const ch = hoursData[key];
           const noteInfo = _parseNote(notesData[key]);
           html += `<div class="emp-block">`;
-          html += `<span class="chip ${sh.id}">${escHtml(emp?.name||"?")}</span>`;
+          html += `<span class="chip ${sh.id}">${escHtml(emp?.name || "?")}</span>`;
           if (ch) html += `<span class="hours">⏰ ${ch.start}–${ch.end}</span>`;
           else if (dayHours !== genericHours) html += `<span class="hours">⏰ ${dayHours}</span>`;
           if (noteInfo.tags.length > 0) {
-            html += `<div>` + noteInfo.tags.map(t=>`<span class="tag">🏷️ ${escHtml(t)}</span>`).join("") + `</div>`;
+            html +=
+              `<div>` +
+              noteInfo.tags.map((t) => `<span class="tag">🏷️ ${escHtml(t)}</span>`).join("") +
+              `</div>`;
           }
           if (noteInfo.text) html += `<span class="note">📝 ${escHtml(noteInfo.text)}</span>`;
           html += `</div>`;
@@ -148,7 +165,7 @@ export function buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursDa
     html += "</tr>";
   });
   html += `</table>
-<div style="margin-top:16px;font-size:11px;color:#999">הופק מ-${escHtml(S.business?.name||"משמרת")} · ${new Date().toLocaleDateString("he-IL")}</div>
+<div style="margin-top:16px;font-size:11px;color:#999">הופק מ-${escHtml(S.business?.name || "משמרת")} · ${new Date().toLocaleDateString("he-IL")}</div>
 </div>`;
   return html;
 }
@@ -158,17 +175,24 @@ export function buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursDa
 // Morning has two variants (בוקר / בוקר ב׳) that overlap in time — for "who's with me"
 // purposes they should be treated as the same group, not separate shifts.
 export function _shiftGroupIds(shiftId) {
-  return (shiftId === "morning" || shiftId === "morning2") ? ["morning", "morning2"] : [shiftId];
+  return shiftId === "morning" || shiftId === "morning2" ? ["morning", "morning2"] : [shiftId];
 }
 export function _dateShift(dateStr, delta) {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + delta);
-  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  return (
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0")
+  );
 }
 // Chronological shift order per day: night(D-1) -> morning(D) -> afternoon(D) -> night(D) -> morning(D+1)...
 // "Who I'm replacing" = whoever worked the shift immediately before mine in that chain.
 export function _handoverBefore(shiftId, date) {
-  if (shiftId === "morning" || shiftId === "morning2") return { date: _dateShift(date, -1), ids: ["night"] };
+  if (shiftId === "morning" || shiftId === "morning2")
+    return { date: _dateShift(date, -1), ids: ["night"] };
   if (shiftId === "afternoon") return { date, ids: ["morning", "morning2"] };
   if (shiftId === "night") return { date, ids: ["afternoon"] };
   return null;
@@ -191,12 +215,12 @@ export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
   // of the generic weekday 22:45-07:00). Without this the exported .ics shows wrong times
   // for weekend / Thursday night shifts.
   const myShifts = [];
-  wd.forEach(date => {
+  wd.forEach((date) => {
     const dayShifts = getShiftsForDate(date);
-    dayShifts.forEach(sh => {
+    dayShifts.forEach((sh) => {
       if ((S.schedule[date]?.[sh.id] || []).includes(empId)) {
-        const ch = S.customHours[date+"|"+sh.id+"|"+empId];
-        const noteInfo = _parseNote(S.assignmentNotes[date+"|"+sh.id+"|"+empId]);
+        const ch = S.customHours[date + "|" + sh.id + "|" + empId];
+        const noteInfo = _parseNote(S.assignmentNotes[date + "|" + sh.id + "|" + empId]);
         myShifts.push({ date, sh, ch, noteInfo });
       }
     });
@@ -218,26 +242,34 @@ export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
   ]);
 
   const allScheduleData = { ...S.schedule };
-  if (prevWeekData.scheduleData[prevBoundaryDate]) allScheduleData[prevBoundaryDate] = prevWeekData.scheduleData[prevBoundaryDate];
-  if (nextWeekData.scheduleData[nextBoundaryDate]) allScheduleData[nextBoundaryDate] = nextWeekData.scheduleData[nextBoundaryDate];
-  const allNotesData = { ...S.assignmentNotes, ...prevWeekData.notesData, ...nextWeekData.notesData };
+  if (prevWeekData.scheduleData[prevBoundaryDate])
+    allScheduleData[prevBoundaryDate] = prevWeekData.scheduleData[prevBoundaryDate];
+  if (nextWeekData.scheduleData[nextBoundaryDate])
+    allScheduleData[nextBoundaryDate] = nextWeekData.scheduleData[nextBoundaryDate];
+  const allNotesData = {
+    ...S.assignmentNotes,
+    ...prevWeekData.notesData,
+    ...nextWeekData.notesData,
+  };
 
   // Returns [{id, shiftId}] — one entry per employee found in any of the given shift ids on that date.
   function occupantsForIds(date, ids) {
     const out = [];
     const seen = new Set();
-    ids.forEach(sid => (allScheduleData[date]?.[sid] || []).forEach(id => {
-      if (seen.has(id)) return;
-      seen.add(id);
-      out.push({ id, shiftId: sid });
-    }));
+    ids.forEach((sid) =>
+      (allScheduleData[date]?.[sid] || []).forEach((id) => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        out.push({ id, shiftId: sid });
+      })
+    );
     return out;
   }
   // Formats an occupant as "שם" or "שם (תגית · הערה)" when they have tags/notes on that shift.
   function formatOccupant(o, date) {
     const nm = getEmp(o.id)?.name;
     if (!nm) return null;
-    const info = _parseNote(allNotesData[date+"|"+o.shiftId+"|"+o.id]);
+    const info = _parseNote(allNotesData[date + "|" + o.shiftId + "|" + o.id]);
     const extras = [];
     if (info.tags.length > 0) extras.push(info.tags.join("/"));
     if (info.text) extras.push(info.text);
@@ -245,17 +277,45 @@ export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
   }
 
   // Build ICS content
-  function pad(n){ return String(n).padStart(2,"0"); }
+  function pad(n) {
+    return String(n).padStart(2, "0");
+  }
   function toICSDate(dateStr, timeStr, addDay) {
     // dateStr "2026-06-21", timeStr "07:00" -> "20260621T070000" (local, floating time)
-    const [y,m,d] = dateStr.split("-").map(Number);
-    const [hh,mm] = timeStr.split(":").map(Number);
-    const dt = new Date(y, m-1, d + (addDay||0), hh, mm, 0);
-    return dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+"T"+pad(dt.getHours())+pad(dt.getMinutes())+"00";
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const [hh, mm] = timeStr.split(":").map(Number);
+    const dt = new Date(y, m - 1, d + (addDay || 0), hh, mm, 0);
+    return (
+      dt.getFullYear() +
+      pad(dt.getMonth() + 1) +
+      pad(dt.getDate()) +
+      "T" +
+      pad(dt.getHours()) +
+      pad(dt.getMinutes()) +
+      "00"
+    );
   }
-  function escICS(s){ return (s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+  function escICS(s) {
+    return (s || "")
+      .replace(/\\/g, "\\\\")
+      .replace(/;/g, "\\;")
+      .replace(/,/g, "\\,")
+      .replace(/\n/g, "\\n");
+  }
 
-  const nowStamp = (()=>{ const d=new Date(); return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+"T"+pad(d.getUTCHours())+pad(d.getUTCMinutes())+pad(d.getUTCSeconds())+"Z"; })();
+  const nowStamp = (() => {
+    const d = new Date();
+    return (
+      d.getUTCFullYear() +
+      pad(d.getUTCMonth() + 1) +
+      pad(d.getUTCDate()) +
+      "T" +
+      pad(d.getUTCHours()) +
+      pad(d.getUTCMinutes()) +
+      pad(d.getUTCSeconds()) +
+      "Z"
+    );
+  })();
 
   let ics = "BEGIN:VCALENDAR\r\n";
   ics += "VERSION:2.0\r\n";
@@ -267,24 +327,33 @@ export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
     const start = item.ch ? item.ch.start : item.sh.start;
     const end = item.ch ? item.ch.end : item.sh.end;
     // Night shift (or any shift where end <= start) crosses midnight -> end is next day
-    const crossesMidnight = (end <= start);
+    const crossesMidnight = end <= start;
     const dtStart = toICSDate(item.date, start, 0);
     const dtEnd = toICSDate(item.date, end, crossesMidnight ? 1 : 0);
 
     const together = occupantsForIds(item.date, _shiftGroupIds(item.sh.id))
-      .filter(o => o.id !== empId).map(o => formatOccupant(o, item.date)).filter(Boolean);
+      .filter((o) => o.id !== empId)
+      .map((o) => formatOccupant(o, item.date))
+      .filter(Boolean);
     const beforeInfo = _handoverBefore(item.sh.id, item.date);
     const before = beforeInfo
-      ? occupantsForIds(beforeInfo.date, beforeInfo.ids).filter(o => o.id !== empId).map(o => formatOccupant(o, beforeInfo.date)).filter(Boolean)
+      ? occupantsForIds(beforeInfo.date, beforeInfo.ids)
+          .filter((o) => o.id !== empId)
+          .map((o) => formatOccupant(o, beforeInfo.date))
+          .filter(Boolean)
       : [];
     const afterInfo = _handoverAfter(item.sh.id, item.date);
     const after = afterInfo
-      ? occupantsForIds(afterInfo.date, afterInfo.ids).filter(o => o.id !== empId).map(o => formatOccupant(o, afterInfo.date)).filter(Boolean)
+      ? occupantsForIds(afterInfo.date, afterInfo.ids)
+          .filter((o) => o.id !== empId)
+          .map((o) => formatOccupant(o, afterInfo.date))
+          .filter(Boolean)
       : [];
 
     // Build description with extras
     let descLines = [];
-    if (item.noteInfo.tags.length > 0) descLines.push("מערכות/תפקיד: " + item.noteInfo.tags.join(", "));
+    if (item.noteInfo.tags.length > 0)
+      descLines.push("מערכות/תפקיד: " + item.noteInfo.tags.join(", "));
     if (item.noteInfo.text) descLines.push("הערה: " + item.noteInfo.text);
     if (together.length > 0) descLines.push("יחד איתי: " + together.join(", "));
     if (before.length > 0) descLines.push("מחליף/ה את: " + before.join(", "));
@@ -309,7 +378,10 @@ export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
       ics += "BEGIN:VALARM\r\n";
       ics += "TRIGGER:-PT" + reminderMin + "M\r\n";
       ics += "ACTION:DISPLAY\r\n";
-      ics += "DESCRIPTION:" + escICS("משמרת " + item.sh.label + " בעוד " + reminderMin + " דקות") + "\r\n";
+      ics +=
+        "DESCRIPTION:" +
+        escICS("משמרת " + item.sh.label + " בעוד " + reminderMin + " דקות") +
+        "\r\n";
       ics += "END:VALARM\r\n";
     }
     ics += "END:VEVENT\r\n";
@@ -324,9 +396,10 @@ export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
   // Try native share first (lets iPhone open directly in Calendar)
   const file = new File([blob], fileName, { type: "text/calendar" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    navigator.share({ files: [file], title: "המשמרות שלי" })
-      .then(()=>toast("✓ נפתח — בחר 'הוסף ליומן'"))
-      .catch(err=>{
+    navigator
+      .share({ files: [file], title: "המשמרות שלי" })
+      .then(() => toast("✓ נפתח — בחר 'הוסף ליומן'"))
+      .catch((err) => {
         if (err?.name === "AbortError") return;
         _downloadICS(blob, fileName);
       });
@@ -343,7 +416,7 @@ export function _downloadICS(blob, fileName) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast("📅 קובץ היומן הורד — פתח אותו כדי להוסיף ליומן");
 }
 
@@ -352,7 +425,7 @@ export async function exportSchedulePDF(weekOffsetParam) {
   const wd = getWeekDates(offset);
   const weekStart = wd[0];
   const weekLabel = fmtDate(wd[0]) + " — " + fmtDate(wd[6]);
-  
+
   const { scheduleData, notesData, hoursData } = await loadWeekDataForExport(offset, weekStart);
   const innerHtml = buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursData, weekLabel);
 
@@ -370,7 +443,7 @@ ${innerHtml}
   // Use hidden iframe instead of new window — so user stays in the app
   const existingIframe = document.getElementById("__print_iframe");
   if (existingIframe) existingIframe.remove();
-  
+
   const iframe = document.createElement("iframe");
   iframe.id = "__print_iframe";
   iframe.style.position = "fixed";
@@ -381,13 +454,13 @@ ${innerHtml}
   iframe.style.border = "0";
   iframe.style.opacity = "0";
   document.body.appendChild(iframe);
-  
+
   // Write content to iframe
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();
   doc.write(html);
   doc.close();
-  
+
   // Wait for fonts/content to load, then print
   setTimeout(() => {
     try {
@@ -396,26 +469,29 @@ ${innerHtml}
     } catch (err) {
       console.error("Print failed:", err);
       // Fallback: offer HTML download
-      const blob = new Blob([html], {type: "text/html;charset=utf-8"});
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `seder_avoda_${weekStart}.html`;
       a.click();
       URL.revokeObjectURL(url);
-      toast("הורד כקובץ HTML — פתח אותו והדפס לקבלת PDF","ok");
+      toast("הורד כקובץ HTML — פתח אותו והדפס לקבלת PDF", "ok");
     }
     // Remove iframe after a delay
     setTimeout(() => iframe.remove(), 2000);
   }, 800);
-  
+
   toast("פתח להדפסה / שמירה כ-PDF ✓");
 }
 
 // Lazy-load html2canvas only when actually needed (keeps initial page load light)
 export function _ensureHtml2Canvas() {
   return new Promise((resolve, reject) => {
-    if (window.html2canvas) { resolve(); return; }
+    if (window.html2canvas) {
+      resolve();
+      return;
+    }
     const s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
     // MSH-202648-005: SRI on dynamically-injected scripts too. If the CDN
@@ -456,13 +532,17 @@ export async function exportScheduleWhatsApp(weekOffsetParam) {
   document.body.appendChild(wrapper);
 
   // Give fonts/layout a moment to settle
-  await new Promise(r => setTimeout(r, 150));
+  await new Promise((r) => setTimeout(r, 150));
 
   let blob;
   try {
     const target = wrapper.querySelector("#wa-export-root") || wrapper;
-    const canvas = await window.html2canvas(target, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
-    blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+    const canvas = await window.html2canvas(target, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+    });
+    blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
   } catch (err) {
     console.error("html2canvas failed:", err);
     toast("שגיאה ביצירת התמונה", "err");
@@ -471,7 +551,10 @@ export async function exportScheduleWhatsApp(weekOffsetParam) {
   }
   wrapper.remove();
 
-  if (!blob) { toast("שגיאה ביצירת התמונה", "err"); return; }
+  if (!blob) {
+    toast("שגיאה ביצירת התמונה", "err");
+    return;
+  }
 
   const fileName = `seder_avoda_${weekStart}.png`;
   const file = new File([blob], fileName, { type: "image/png" });
@@ -503,26 +586,34 @@ export async function exportScheduleCSV(weekOffsetParam) {
   const offset = weekOffsetParam != null ? weekOffsetParam : S.weekOffset;
   const wd = getWeekDates(offset);
   const weekStart = wd[0];
-  
+
   // Load schedule data + notes + customHours for the selected week
   let scheduleData = S.schedule;
   let notesData = S.assignmentNotes;
   let hoursData = S.customHours;
   if (offset !== S.weekOffset) {
-    const { data: sched } = await sb.from("schedules")
-      .select("id").eq("business_id", S.profile.business_id).eq("week_start", weekStart).maybeSingle();
+    const { data: sched } = await sb
+      .from("schedules")
+      .select("id")
+      .eq("business_id", S.profile.business_id)
+      .eq("week_start", weekStart)
+      .maybeSingle();
     if (sched) {
-      const { data: assigns } = await sb.from("assignments").select("*").eq("schedule_id", sched.id);
+      const { data: assigns } = await sb
+        .from("assignments")
+        .select("*")
+        .eq("schedule_id", sched.id);
       scheduleData = {};
       notesData = {};
       hoursData = {};
-      (assigns || []).forEach(a => {
+      (assigns || []).forEach((a) => {
         if (!scheduleData[a.date]) scheduleData[a.date] = {};
         if (!scheduleData[a.date][a.shift]) scheduleData[a.date][a.shift] = [];
         scheduleData[a.date][a.shift].push(a.employee_id);
-        const key = a.date+"|"+a.shift+"|"+a.employee_id;
+        const key = a.date + "|" + a.shift + "|" + a.employee_id;
         if (a.note) notesData[key] = a.note;
-        if (a.custom_start && a.custom_end) hoursData[key] = {start:a.custom_start, end:a.custom_end};
+        if (a.custom_start && a.custom_end)
+          hoursData[key] = { start: a.custom_start, end: a.custom_end };
       });
     } else {
       scheduleData = {};
@@ -530,27 +621,35 @@ export async function exportScheduleCSV(weekOffsetParam) {
       hoursData = {};
     }
   }
-  
-  let csv = "\u05de\u05e9\u05de\u05e8\u05ea,\u05e9\u05e2\u05d5\u05ea,"+wd.map(d=>{const dt=new Date(d+"T00:00:00");return DAYS[dt.getDay()]+" "+dt.getDate();}).join(",")+String.fromCharCode(10);
-  SHIFTS.forEach(sh => {
-    const row = [sh.label, sh.start+"–"+sh.end];
-    wd.forEach(date => {
+
+  let csv =
+    "\u05de\u05e9\u05de\u05e8\u05ea,\u05e9\u05e2\u05d5\u05ea," +
+    wd
+      .map((d) => {
+        const dt = new Date(d + "T00:00:00");
+        return DAYS[dt.getDay()] + " " + dt.getDate();
+      })
+      .join(",") +
+    String.fromCharCode(10);
+  SHIFTS.forEach((sh) => {
+    const row = [sh.label, sh.start + "–" + sh.end];
+    wd.forEach((date) => {
       // Pick up day-specific hours (Thu-night, Fri, Sat) when the employee has no
       // custom hours — otherwise the CSV wrongly shows the generic weekday times.
-      const shForDay = getShiftsForDate(date).find(s => s.id === sh.id) || sh;
+      const shForDay = getShiftsForDate(date).find((s) => s.id === sh.id) || sh;
       const dayDefaultHours = shForDay.start + "-" + shForDay.end;
       const genericDefaultHours = sh.start + "-" + sh.end;
-      const empIds = scheduleData[date]?.[sh.id]||[];
+      const empIds = scheduleData[date]?.[sh.id] || [];
       if (empIds.length === 0) {
         row.push("—");
       } else {
         // For each employee, format: "Name [07:00-15:00] {Cortex, EDR} (note)"
-        const empStrs = empIds.map(id => {
+        const empStrs = empIds.map((id) => {
           const emp = getEmp(id);
-          const key = date+"|"+sh.id+"|"+id;
+          const key = date + "|" + sh.id + "|" + id;
           const ch = hoursData[key];
           const noteInfo = _parseNote(notesData[key]);
-          let str = emp?.name||"?";
+          let str = emp?.name || "?";
           if (ch) str += " [" + ch.start + "-" + ch.end + "]";
           else if (dayDefaultHours !== genericDefaultHours) str += " [" + dayDefaultHours + "]";
           if (noteInfo.tags.length > 0) str += " {" + noteInfo.tags.join(", ") + "}";
@@ -560,12 +659,14 @@ export async function exportScheduleCSV(weekOffsetParam) {
         row.push(empStrs.join(" + "));
       }
     });
-    csv += row.map(v=>"\""+v.replace(/"/g, '""')+"\"").join(",") + String.fromCharCode(10);
+    csv += row.map((v) => '"' + v.replace(/"/g, '""') + '"').join(",") + String.fromCharCode(10);
   });
-  const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href=url; a.download=`seder_avoda_${weekStart}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+  a.href = url;
+  a.download = `seder_avoda_${weekStart}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
   toast("קובץ CSV הורד ✓");
 }

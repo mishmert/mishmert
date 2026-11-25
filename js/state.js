@@ -20,43 +20,85 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { SHIFTS, SHIFT_BY_ID, SHIFT_LABELS, WEEKEND_SHIFTS } from './constants.js';
-import { render, silentRefresh } from './main.js';
-import { toast } from './utils.js';
+import { SHIFTS, SHIFT_BY_ID, SHIFT_LABELS, WEEKEND_SHIFTS } from "./constants.js";
+import { render, silentRefresh } from "./main.js";
+import { toast } from "./utils.js";
 export let S = {
   view: "loading",
-  user: null, profile: null, business: null,
-  employees: [], vacations: [], swapRequests: [], availSubmissions: [],
-  schedule: {},         // { [dateStr]: { [shiftId]: [empId,...] } }
+  user: null,
+  profile: null,
+  business: null,
+  employees: [],
+  vacations: [],
+  swapRequests: [],
+  availSubmissions: [],
+  schedule: {}, // { [dateStr]: { [shiftId]: [empId,...] } }
   publishedWeeks: new Set(),
-  lockedSlots: {},      // { "date|shift": Set<empId> }
-  customHours: {},      // { "date|shift|empId": {start,end} }
-  assignmentNotes: {},  // { "date|shift|empId": "note text" }
-  systems: [],  // shared system tags (e.g. ["Google", "Firewall", "EDR"])
+  lockedSlots: {}, // { "date|shift": Set<empId> }
+  customHours: {}, // { "date|shift|empId": {start,end} }
+  assignmentNotes: {}, // { "date|shift|empId": "note text" }
+  systems: [], // shared system tags (e.g. ["Google", "Firewall", "EDR"])
   invitations: [],
   showInviteModal: false,
   newInvitation: { name: "", email: "", role: "employee" },
   weekOffset: 0,
-  selectedCell: null,   // { date, shift }
+  selectedCell: null, // { date, shift }
   constraintsEmp: null,
-  empViewId: null, empViewTab: "shifts",
-  showAddEmp: false, showAddVac: false, showMgrAddVac: false, showSwapModal: false,
-  showPublishModal: false, swapMyShift: null, swapTargetShift: null, empSwapTab: "swap", handoverShift: null, handoverTarget: null, showShiftEditor: false, publishType: 'final', publishVisibleUntil: null, scheduleExpired: false,
-  newEmp: {name:"",email:"",idNumber:"",phone:"",role:"employee"},
-  newVac: {employeeId:"",startDate:"",endDate:"",reason:""},
-  availDraft: {}, availTargetOffset: null,
-  testAsEmployee: false, blockReasons: {}, schedPublishType: {}, publishedInitial: null, monthOffset: 0, blocksWeekOffset: 0, swapWeekOffset: 0, mgrBlocksTab: "team", mgrSwapsTab: "approve", mgrVacTab: "approve", scheduleBackup: null, scheduleUndoStack: [], scheduleRedoStack: [], schedMobileView: "week", schedDayIdx: null, qualHistory: null,
+  empViewId: null,
+  empViewTab: "shifts",
+  showAddEmp: false,
+  showAddVac: false,
+  showMgrAddVac: false,
+  showSwapModal: false,
+  showPublishModal: false,
+  swapMyShift: null,
+  swapTargetShift: null,
+  empSwapTab: "swap",
+  handoverShift: null,
+  handoverTarget: null,
+  showShiftEditor: false,
+  publishType: "final",
+  publishVisibleUntil: null,
+  scheduleExpired: false,
+  newEmp: { name: "", email: "", idNumber: "", phone: "", role: "employee" },
+  newVac: { employeeId: "", startDate: "", endDate: "", reason: "" },
+  availDraft: {},
+  availTargetOffset: null,
+  testAsEmployee: false,
+  blockReasons: {},
+  schedPublishType: {},
+  publishedInitial: null,
+  monthOffset: 0,
+  blocksWeekOffset: 0,
+  swapWeekOffset: 0,
+  mgrBlocksTab: "team",
+  mgrSwapsTab: "approve",
+  mgrVacTab: "approve",
+  scheduleBackup: null,
+  scheduleUndoStack: [],
+  scheduleRedoStack: [],
+  schedMobileView: "week",
+  schedDayIdx: null,
+  qualHistory: null,
   empScheduleFilter: null, // empId to filter the read-only employee schedule grid by, or null = show everyone
-  myMonthOffset: 0, myMonthData: null, myMonthKey: null,
-  analyticsPeriod: 3, analyticsData: null, analyticsKey: null,
-  bizInvitesLoaded: false, bizInvites: [],
+  myMonthOffset: 0,
+  myMonthData: null,
+  myMonthKey: null,
+  analyticsPeriod: 3,
+  analyticsData: null,
+  analyticsKey: null,
+  bizInvitesLoaded: false,
+  bizInvites: [],
 
-  calendarMonthData: null, calendarMonthKey: null,
-  currentPublishType: null, showBlocksModal: false,
-  toast: null, modal: null,
+  calendarMonthData: null,
+  calendarMonthKey: null,
+  currentPublishType: null,
+  showBlocksModal: false,
+  toast: null,
+  modal: null,
   loginMode: "login",
 };
-window.S = S;  // Expose state to debug helpers
+window.S = S; // Expose state to debug helpers
 
 // Reset S to a fresh object (e.g. on logout). Must live in state.js because
 // an imported binding cannot be reassigned from the outside — only the module
@@ -66,7 +108,6 @@ export function resetState(partial) {
   S = { ...S, ...partial };
   window.S = S;
 }
-
 
 // ── AVAIL-DRAFT PERSISTENCE ──
 // Save unfinished block selections to localStorage so a refresh, tab-crash or
@@ -82,10 +123,16 @@ export function persistAvailDraft() {
       localStorage.removeItem(key);
       return;
     }
-    localStorage.setItem(key, JSON.stringify({
-      draft, week: S._draftWeek, reasons: S.blockReasons || {}, savedAt: Date.now()
-    }));
-  } catch(_){}
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        draft,
+        week: S._draftWeek,
+        reasons: S.blockReasons || {},
+        savedAt: Date.now(),
+      })
+    );
+  } catch (_) {}
 }
 export function restoreAvailDraft() {
   try {
@@ -94,36 +141,64 @@ export function restoreAvailDraft() {
     if (!raw) return;
     const payload = JSON.parse(raw);
     // Discard anything older than 14 days — stale drafts just confuse.
-    if (!payload || !payload.savedAt || Date.now() - payload.savedAt > 14*86400000) {
+    if (!payload || !payload.savedAt || Date.now() - payload.savedAt > 14 * 86400000) {
       localStorage.removeItem("availDraft_" + S.user.id);
       return;
     }
     S.availDraft = payload.draft || {};
     S._draftWeek = payload.week || null;
     S.blockReasons = payload.reasons || {};
-  } catch(_){}
+  } catch (_) {}
 }
 export function clearPersistedAvailDraft() {
-  try { if (S.user) localStorage.removeItem("availDraft_" + S.user.id); } catch(_){}
+  try {
+    if (S.user) localStorage.removeItem("availDraft_" + S.user.id);
+  } catch (_) {}
 }
 
 // Track open date/time pickers globally. On iOS, any re-render while the native wheel
 // picker is open (realtime push, auto-refresh, animation) destroys the input element
 // and dismisses the picker — the user has no chance to pick anything. We flag the open
 // state here and read it from isUserBusy() so silentRefresh skips while picking.
-document.addEventListener("focusin", function(ev){
-  const t = ev.target;
-  if (t && t.tagName === "INPUT" && (t.type === "date" || t.type === "datetime-local" || t.type === "time" || t.type === "month" || t.type === "week")) {
-    S._datePickerOpen = true;
-  }
-}, true);
-document.addEventListener("focusout", function(ev){
-  const t = ev.target;
-  if (t && t.tagName === "INPUT" && (t.type === "date" || t.type === "datetime-local" || t.type === "time" || t.type === "month" || t.type === "week")) {
-    // Clear after a small delay so a quick re-focus (iOS wheel re-open) doesn't flicker.
-    setTimeout(() => { S._datePickerOpen = false; }, 500);
-  }
-}, true);
+document.addEventListener(
+  "focusin",
+  function (ev) {
+    const t = ev.target;
+    if (
+      t &&
+      t.tagName === "INPUT" &&
+      (t.type === "date" ||
+        t.type === "datetime-local" ||
+        t.type === "time" ||
+        t.type === "month" ||
+        t.type === "week")
+    ) {
+      S._datePickerOpen = true;
+    }
+  },
+  true
+);
+document.addEventListener(
+  "focusout",
+  function (ev) {
+    const t = ev.target;
+    if (
+      t &&
+      t.tagName === "INPUT" &&
+      (t.type === "date" ||
+        t.type === "datetime-local" ||
+        t.type === "time" ||
+        t.type === "month" ||
+        t.type === "week")
+    ) {
+      // Clear after a small delay so a quick re-focus (iOS wheel re-open) doesn't flicker.
+      setTimeout(() => {
+        S._datePickerOpen = false;
+      }, 500);
+    }
+  },
+  true
+);
 
 // ── OFFLINE MODE ──
 // Cache the critical state in localStorage after every successful load so the app can
@@ -159,7 +234,9 @@ export function persistOfflineCache() {
       WEEKEND_SHIFTS: WEEKEND_SHIFTS,
     };
     localStorage.setItem(key, JSON.stringify(snapshot));
-  } catch(_) { /* quota / serialization — not fatal */ }
+  } catch (_) {
+    /* quota / serialization — not fatal */
+  }
 }
 
 export function restoreOfflineCache() {
@@ -170,7 +247,7 @@ export function restoreOfflineCache() {
     if (!raw) return false;
     const snap = JSON.parse(raw);
     // Reject stale caches older than 48h — probably not useful.
-    if (!snap || !snap.savedAt || Date.now() - snap.savedAt > 48*3600000) {
+    if (!snap || !snap.savedAt || Date.now() - snap.savedAt > 48 * 3600000) {
       localStorage.removeItem(key);
       return false;
     }
@@ -183,11 +260,23 @@ export function restoreOfflineCache() {
     S.availSubmissions = snap.availSubmissions || [];
     S.publishedWeeks = new Set(snap.publishedWeeks || []);
     S.customHours = snap.customHours || {};
-    if (Array.isArray(snap.SHIFTS)) { SHIFTS.length = 0; SHIFTS.push(...snap.SHIFTS); SHIFTS.forEach(s=>{SHIFT_BY_ID[s.id]=s; SHIFT_LABELS[s.id]=s.label;}); }
-    if (Array.isArray(snap.WEEKEND_SHIFTS)) { WEEKEND_SHIFTS.length = 0; WEEKEND_SHIFTS.push(...snap.WEEKEND_SHIFTS); }
+    if (Array.isArray(snap.SHIFTS)) {
+      SHIFTS.length = 0;
+      SHIFTS.push(...snap.SHIFTS);
+      SHIFTS.forEach((s) => {
+        SHIFT_BY_ID[s.id] = s;
+        SHIFT_LABELS[s.id] = s.label;
+      });
+    }
+    if (Array.isArray(snap.WEEKEND_SHIFTS)) {
+      WEEKEND_SHIFTS.length = 0;
+      WEEKEND_SHIFTS.push(...snap.WEEKEND_SHIFTS);
+    }
     S._offlineAge = Math.floor((Date.now() - snap.savedAt) / 60000); // age in minutes
     return true;
-  } catch(_) { return false; }
+  } catch (_) {
+    return false;
+  }
 }
 
 // Flip _online on real browser events and re-render so the offline banner appears/disappears.
@@ -205,13 +294,13 @@ window.addEventListener("offline", () => {
 
 // Warn before leaving the tab with unsaved selections — a tap on the back
 // button or a browser crash shouldn't silently lose 10 minutes of work.
-window.addEventListener("beforeunload", function(ev){
+window.addEventListener("beforeunload", function (ev) {
   try {
-    const hasDraft = Object.values(S.availDraft||{}).some(Boolean);
+    const hasDraft = Object.values(S.availDraft || {}).some(Boolean);
     if (hasDraft) {
       ev.preventDefault();
       ev.returnValue = "יש לך חסימות שלא נשמרו — האם לצאת?";
       return ev.returnValue;
     }
-  } catch(_){}
+  } catch (_) {}
 });

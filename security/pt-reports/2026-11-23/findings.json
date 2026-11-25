@@ -3,21 +3,147 @@
   "engagement": "2026-W48",
   "project_id": "zszlqoisokjgvplrcbic",
   "generated_at": "2026-11-23T19:40:00Z",
-  "summary": {"critical": 0, "high": 1, "medium": 10, "low": 2, "info": 1, "total": 14},
+  "summary": { "critical": 0, "high": 1, "medium": 10, "low": 2, "info": 1, "total": 14 },
   "findings": [
-    {"id":"MSH-202648-001","title":"rapid-action Edge Function allows unauthenticated phishing email relay","severity":"HIGH","cvss_score":8.2,"cvss_vector":"AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L","cwe":["CWE-862","CWE-20"],"status":"open","fingerprint":"a1f0:verify_jwt=false:to-array"},
-    {"id":"MSH-202648-002","title":"public.audit_log insert policy accepts cross-tenant, self-impersonating writes","severity":"HIGH","cvss_score":7.1,"cvss_vector":"AV:N/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:N","cwe":["CWE-284","CWE-345"],"status":"open","fingerprint":"b7c1:audit_insert:no_biz_check"},
-    {"id":"MSH-202648-003","title":"Super-admin RPCs grantable to authenticated rely on body-local checks only","severity":"MEDIUM","cvss_score":6.5,"cvss_vector":"AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N","cwe":["CWE-285"],"status":"open","fingerprint":"c902:superadmin:grant_authenticated"},
-    {"id":"MSH-202648-004","title":"No security response headers served from mishmert.com","severity":"MEDIUM","cvss_score":5.9,"cvss_vector":"AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N","cwe":["CWE-693","CWE-1021"],"status":"open_unverified","fingerprint":"d4b3:headers:default_github_pages"},
-    {"id":"MSH-202648-005","title":"No SRI on externally-loaded CDN scripts","severity":"MEDIUM","cvss_score":5.6,"cvss_vector":"AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:L","cwe":["CWE-353","CWE-494"],"status":"open","fingerprint":"e9a0:no_sri:4_scripts"},
-    {"id":"MSH-202648-006","title":"public.business_invitations table does not exist — business-invite flow broken","severity":"MEDIUM","cvss_score":5.3,"cvss_vector":"AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L","cwe":["CWE-754"],"status":"open","fingerprint":"f2c8:missing_table:biz_invitations"},
-    {"id":"MSH-202648-007","title":"Legacy JWT anon key still enabled alongside new publishable key; exp 2036","severity":"MEDIUM","cvss_score":4.9,"cvss_vector":"AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N","cwe":["CWE-798","CWE-324"],"status":"open","fingerprint":"a0d7:legacy_anon:exp_2036"},
-    {"id":"MSH-202648-008","title":"Supabase Auth leaked-password protection (HIBP) disabled","severity":"MEDIUM","cvss_score":4.7,"cvss_vector":"AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N","cwe":["CWE-521"],"status":"open","fingerprint":"b411:hibp:off"},
-    {"id":"MSH-202648-009","title":"Orphan duplicate Edge Function admin---reset---mfa still active","severity":"MEDIUM","cvss_score":4.3,"cvss_vector":"AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N","cwe":["CWE-1059","CWE-710"],"status":"open","fingerprint":"c01f:duplicate_slug:triple_hyphen"},
-    {"id":"MSH-202648-010","title":"Password minimum length of 6 characters (below NIST SP 800-63B minimum 8)","severity":"MEDIUM","cvss_score":4.2,"cvss_vector":"AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N","cwe":["CWE-521"],"status":"open","fingerprint":"d920:password_len:min_6"},
-    {"id":"MSH-202648-011","title":"AAL2 (MFA) enforced only in client code — no database-level RLS gating","severity":"MEDIUM","cvss_score":4.0,"cvss_vector":"AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N","cwe":["CWE-308","CWE-287"],"status":"open","fingerprint":"e104:aal2:client_only"},
-    {"id":"MSH-202648-012","title":"Extension pg_net installed in public schema","severity":"LOW","cvss_score":3.7,"cvss_vector":"AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:L/A:L","cwe":["CWE-732"],"status":"open","fingerprint":"f3e9:pg_net:public_schema"},
-    {"id":"MSH-202648-013","title":"RLS enabled with no policy on 3 internal tables","severity":"LOW","cvss_score":2.4,"cvss_vector":"AV:N/AC:H/PR:H/UI:N/S:U/C:L/I:N/A:N","cwe":["CWE-693"],"status":"open","fingerprint":"a812:rls_no_policy:3"},
-    {"id":"MSH-202648-014","title":"Two SECURITY DEFINER functions have search_path that includes pg_temp","severity":"INFO","cvss_score":2.4,"cvss_vector":"AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:L/A:N","cwe":["CWE-427"],"status":"open","fingerprint":"b7f0:search_path:pg_temp"}
+    {
+      "id": "MSH-202648-001",
+      "title": "rapid-action Edge Function allows unauthenticated phishing email relay",
+      "severity": "HIGH",
+      "cvss_score": 8.2,
+      "cvss_vector": "AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+      "cwe": ["CWE-862", "CWE-20"],
+      "status": "open",
+      "fingerprint": "a1f0:verify_jwt=false:to-array"
+    },
+    {
+      "id": "MSH-202648-002",
+      "title": "public.audit_log insert policy accepts cross-tenant, self-impersonating writes",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "AV:N/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:N",
+      "cwe": ["CWE-284", "CWE-345"],
+      "status": "open",
+      "fingerprint": "b7c1:audit_insert:no_biz_check"
+    },
+    {
+      "id": "MSH-202648-003",
+      "title": "Super-admin RPCs grantable to authenticated rely on body-local checks only",
+      "severity": "MEDIUM",
+      "cvss_score": 6.5,
+      "cvss_vector": "AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+      "cwe": ["CWE-285"],
+      "status": "open",
+      "fingerprint": "c902:superadmin:grant_authenticated"
+    },
+    {
+      "id": "MSH-202648-004",
+      "title": "No security response headers served from mishmert.com",
+      "severity": "MEDIUM",
+      "cvss_score": 5.9,
+      "cvss_vector": "AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "cwe": ["CWE-693", "CWE-1021"],
+      "status": "open_unverified",
+      "fingerprint": "d4b3:headers:default_github_pages"
+    },
+    {
+      "id": "MSH-202648-005",
+      "title": "No SRI on externally-loaded CDN scripts",
+      "severity": "MEDIUM",
+      "cvss_score": 5.6,
+      "cvss_vector": "AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:L",
+      "cwe": ["CWE-353", "CWE-494"],
+      "status": "open",
+      "fingerprint": "e9a0:no_sri:4_scripts"
+    },
+    {
+      "id": "MSH-202648-006",
+      "title": "public.business_invitations table does not exist — business-invite flow broken",
+      "severity": "MEDIUM",
+      "cvss_score": 5.3,
+      "cvss_vector": "AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:L",
+      "cwe": ["CWE-754"],
+      "status": "open",
+      "fingerprint": "f2c8:missing_table:biz_invitations"
+    },
+    {
+      "id": "MSH-202648-007",
+      "title": "Legacy JWT anon key still enabled alongside new publishable key; exp 2036",
+      "severity": "MEDIUM",
+      "cvss_score": 4.9,
+      "cvss_vector": "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+      "cwe": ["CWE-798", "CWE-324"],
+      "status": "open",
+      "fingerprint": "a0d7:legacy_anon:exp_2036"
+    },
+    {
+      "id": "MSH-202648-008",
+      "title": "Supabase Auth leaked-password protection (HIBP) disabled",
+      "severity": "MEDIUM",
+      "cvss_score": 4.7,
+      "cvss_vector": "AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+      "cwe": ["CWE-521"],
+      "status": "open",
+      "fingerprint": "b411:hibp:off"
+    },
+    {
+      "id": "MSH-202648-009",
+      "title": "Orphan duplicate Edge Function admin---reset---mfa still active",
+      "severity": "MEDIUM",
+      "cvss_score": 4.3,
+      "cvss_vector": "AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+      "cwe": ["CWE-1059", "CWE-710"],
+      "status": "open",
+      "fingerprint": "c01f:duplicate_slug:triple_hyphen"
+    },
+    {
+      "id": "MSH-202648-010",
+      "title": "Password minimum length of 6 characters (below NIST SP 800-63B minimum 8)",
+      "severity": "MEDIUM",
+      "cvss_score": 4.2,
+      "cvss_vector": "AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:N",
+      "cwe": ["CWE-521"],
+      "status": "open",
+      "fingerprint": "d920:password_len:min_6"
+    },
+    {
+      "id": "MSH-202648-011",
+      "title": "AAL2 (MFA) enforced only in client code — no database-level RLS gating",
+      "severity": "MEDIUM",
+      "cvss_score": 4.0,
+      "cvss_vector": "AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N",
+      "cwe": ["CWE-308", "CWE-287"],
+      "status": "open",
+      "fingerprint": "e104:aal2:client_only"
+    },
+    {
+      "id": "MSH-202648-012",
+      "title": "Extension pg_net installed in public schema",
+      "severity": "LOW",
+      "cvss_score": 3.7,
+      "cvss_vector": "AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:L/A:L",
+      "cwe": ["CWE-732"],
+      "status": "open",
+      "fingerprint": "f3e9:pg_net:public_schema"
+    },
+    {
+      "id": "MSH-202648-013",
+      "title": "RLS enabled with no policy on 3 internal tables",
+      "severity": "LOW",
+      "cvss_score": 2.4,
+      "cvss_vector": "AV:N/AC:H/PR:H/UI:N/S:U/C:L/I:N/A:N",
+      "cwe": ["CWE-693"],
+      "status": "open",
+      "fingerprint": "a812:rls_no_policy:3"
+    },
+    {
+      "id": "MSH-202648-014",
+      "title": "Two SECURITY DEFINER functions have search_path that includes pg_temp",
+      "severity": "INFO",
+      "cvss_score": 2.4,
+      "cvss_vector": "AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:L/A:N",
+      "cwe": ["CWE-427"],
+      "status": "open",
+      "fingerprint": "b7f0:search_path:pg_temp"
+    }
   ]
 }

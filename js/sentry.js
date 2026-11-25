@@ -38,8 +38,10 @@ if (DSN) {
       // Strip URL query strings from breadcrumbs — they sometimes carry OAuth
       // tokens from third-party sign-in flows we never expect to see.
       if (event.request?.url) {
-        try { event.request.url = new URL(event.request.url).origin + new URL(event.request.url).pathname; }
-        catch (_) {}
+        try {
+          event.request.url =
+            new URL(event.request.url).origin + new URL(event.request.url).pathname;
+        } catch (_) {}
       }
       return event;
     },

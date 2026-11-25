@@ -11,11 +11,14 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { S } from './state.js';
+import { S } from "./state.js";
 export const _memoCache = new Map();
 export const _memoVersion = { current: 0 };
 // Invalidate memo cache when data changes
-export function invalidateMemo() { _memoVersion.current++; _memoCache.clear(); }
+export function invalidateMemo() {
+  _memoVersion.current++;
+  _memoCache.clear();
+}
 
 export function memoize(key, fn) {
   const fullKey = key + "::" + _memoVersion.current;
@@ -35,7 +38,7 @@ export const _empByIdCache = {};
 export function getEmp(id) {
   if (_empByIdCache.id !== _memoVersion.current) {
     _empByIdCache.id = _memoVersion.current;
-    _empByIdCache.map = Object.fromEntries((S.employees||[]).map(e=>[e.id,e]));
+    _empByIdCache.map = Object.fromEntries((S.employees || []).map((e) => [e.id, e]));
   }
   return _empByIdCache.map[id];
 }

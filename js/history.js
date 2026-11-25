@@ -15,13 +15,13 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { S } from './state.js';
-import { getWeekDates, toast, uiConfirm } from './utils.js';
-import { render } from './main.js';
-import { sb } from './sb.js';
+import { S } from "./state.js";
+import { getWeekDates, toast, uiConfirm } from "./utils.js";
+import { render } from "./main.js";
+import { sb } from "./sb.js";
 
-import { logAction } from './audit.js';
-import { invalidateSwapCache } from './memo.js';
+import { logAction } from "./audit.js";
+import { invalidateSwapCache } from "./memo.js";
 export const MAX_HISTORY = 20;
 
 export function _snapshotCurrentSchedule(label) {
@@ -29,7 +29,7 @@ export function _snapshotCurrentSchedule(label) {
   // but also which of them were manual (locked from auto-schedule).
   const locksClone = {};
   Object.entries(S.lockedSlots || {}).forEach(([k, s]) => {
-    const arr = s instanceof Set ? [...s] : (Array.isArray(s) ? s : []);
+    const arr = s instanceof Set ? [...s] : Array.isArray(s) ? s : [];
     if (arr.length > 0) locksClone[k] = arr;
   });
   return {
@@ -39,7 +39,7 @@ export function _snapshotCurrentSchedule(label) {
     assignmentNotes: JSON.parse(JSON.stringify(S.assignmentNotes || {})),
     lockedSlots: locksClone,
     label: label || "שינוי",
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
 }
 
@@ -91,7 +91,7 @@ export async function redoSchedule() {
 // Restore a snapshot — both in memory and to DB
 export async function restoreSnapshot(snapshot) {
   if (!snapshot) return;
-  
+
   // Restore state
   S.schedule = JSON.parse(JSON.stringify(snapshot.schedule));
   S.customHours = JSON.parse(JSON.stringify(snapshot.customHours));
@@ -101,52 +101,59 @@ export async function restoreSnapshot(snapshot) {
   Object.entries(snapshot.lockedSlots || {}).forEach(([k, arr]) => {
     if (Array.isArray(arr) && arr.length > 0) S.lockedSlots[k] = new Set(arr);
   });
-  
+
   // Persist to DB (use the snapshot's weekOffset to find the right schedule)
   if (!S.profile?.business_id) return;
   const weekStart = getWeekDates(snapshot.weekOffset)[0];
-  
-  let { data: sched } = await sb.from("schedules")
-    .select("id").eq("business_id", S.profile.business_id).eq("week_start", weekStart).maybeSingle();
+
+  let { data: sched } = await sb
+    .from("schedules")
+    .select("id")
+    .eq("business_id", S.profile.business_id)
+    .eq("week_start", weekStart)
+    .maybeSingle();
   if (!sched) {
-    const { data: ns } = await sb.from("schedules")
-      .insert({business_id:S.profile.business_id, week_start:weekStart, created_by:S.user.id}).select().single();
+    const { data: ns } = await sb
+      .from("schedules")
+      .insert({ business_id: S.profile.business_id, week_start: weekStart, created_by: S.user.id })
+      .select()
+      .single();
     sched = ns;
   }
   if (!sched) return;
-  
+
   S.schedule.id = sched.id;
-  
+
   // Delete current and re-insert from snapshot
   await sb.from("assignments").delete().eq("schedule_id", sched.id);
-  
+
   const rows = [];
   Object.entries(S.schedule).forEach(([date, shifts]) => {
     if (date === "id" || !shifts || typeof shifts !== "object") return;
     Object.entries(shifts).forEach(([shift, empIds]) => {
       if (!Array.isArray(empIds)) return;
       const unique = [...new Set(empIds)];
-      unique.forEach(empId => {
-        const noteKey = date+"|"+shift+"|"+empId;
+      unique.forEach((empId) => {
+        const noteKey = date + "|" + shift + "|" + empId;
         const chKey = noteKey;
         const ch = S.customHours[chKey];
         const note = S.assignmentNotes[noteKey];
-        rows.push({ 
-          schedule_id:sched.id, 
-          employee_id:empId, 
-          date, 
+        rows.push({
+          schedule_id: sched.id,
+          employee_id: empId,
+          date,
           shift,
           custom_start: ch?.start || null,
           custom_end: ch?.end || null,
-          note: note || null
+          note: note || null,
         });
       });
     });
   });
   if (rows.length) {
-    await sb.from("assignments").upsert(rows, {onConflict: "schedule_id,employee_id,date,shift"});
+    await sb.from("assignments").upsert(rows, { onConflict: "schedule_id,employee_id,date,shift" });
   }
-  
+
   // Invalidate caches
   if (typeof invalidateSwapCache === "function") invalidateSwapCache();
   // eslint-disable-next-line no-undef
@@ -160,34 +167,49 @@ export async function undoAutoSchedule() {
     toast("אין שיבוץ לבטל", "err");
     return;
   }
-  
-  if (!(await uiConfirm({title:"לבטל שיבוץ אוטומטי?", message:"הפעולה תחזיר את הסידור למצב שלפני השיבוץ האחרון.", tone:"warn", okLabel:"כן, לבטל"}))) return;
-  
+
+  if (
+    !(await uiConfirm({
+      title: "לבטל שיבוץ אוטומטי?",
+      message: "הפעולה תחזיר את הסידור למצב שלפני השיבוץ האחרון.",
+      tone: "warn",
+      okLabel: "כן, לבטל",
+    }))
+  )
+    return;
+
   // Restore from backup
   S.schedule = JSON.parse(JSON.stringify(S.scheduleBackup.schedule));
   const backupWeekOffset = S.scheduleBackup.weekOffset;
-  
+
   // Persist to DB
   if (!S.profile?.business_id) return;
   const weekStart = getWeekDates(backupWeekOffset)[0];
-  
-  let { data: sched } = await sb.from("schedules")
-    .select("id").eq("business_id", S.profile.business_id).eq("week_start", weekStart).maybeSingle();
+
+  let { data: sched } = await sb
+    .from("schedules")
+    .select("id")
+    .eq("business_id", S.profile.business_id)
+    .eq("week_start", weekStart)
+    .maybeSingle();
   if (!sched) {
-    const { data: ns } = await sb.from("schedules")
-      .insert({business_id:S.profile.business_id, week_start:weekStart, created_by:S.user.id}).select().single();
+    const { data: ns } = await sb
+      .from("schedules")
+      .insert({ business_id: S.profile.business_id, week_start: weekStart, created_by: S.user.id })
+      .select()
+      .single();
     sched = ns;
   }
   if (!sched) {
     toast("שגיאה בשחזור", "err");
     return;
   }
-  
+
   S.schedule.id = sched.id;
-  
+
   // Delete all current assignments for this week
   await sb.from("assignments").delete().eq("schedule_id", sched.id);
-  
+
   // Insert the backup assignments
   const rows = [];
   Object.entries(S.schedule).forEach(([date, shifts]) => {
@@ -195,26 +217,26 @@ export async function undoAutoSchedule() {
     Object.entries(shifts).forEach(([shift, empIds]) => {
       if (!Array.isArray(empIds)) return;
       const unique = [...new Set(empIds)];
-      unique.forEach(empId => {
-        rows.push({ schedule_id:sched.id, employee_id:empId, date, shift });
+      unique.forEach((empId) => {
+        rows.push({ schedule_id: sched.id, employee_id: empId, date, shift });
       });
     });
   });
   if (rows.length) {
-    await sb.from("assignments").upsert(rows, {onConflict: "schedule_id,employee_id,date,shift"});
+    await sb.from("assignments").upsert(rows, { onConflict: "schedule_id,employee_id,date,shift" });
   }
-  
+
   // Clear backup
   S.scheduleBackup = null;
-  
+
   // Invalidate caches
   if (typeof invalidateSwapCache === "function") invalidateSwapCache();
   // eslint-disable-next-line no-undef
   if (typeof invalidateMonthCache === "function") invalidateMonthCache();
   S.qualHistory = null;
-  
-  if (typeof logAction === "function") logAction("auto_schedule_undone", {week_start: weekStart});
-  
+
+  if (typeof logAction === "function") logAction("auto_schedule_undone", { week_start: weekStart });
+
   toast("↶ הסידור הוחזר למצב הקודם");
   render();
 }

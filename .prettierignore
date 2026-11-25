@@ -1,0 +1,9 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+package-lock.json
+
+# Don't touch the generated Vite-bundled sw.js
+# (we edit the source sw.js directly; dist/ is built output)
+dist/sw.js

@@ -21,7 +21,7 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { sb } from './sb.js';
+import { sb } from "./sb.js";
 export const APP_URL = "https://mishmert.com/";
 
 // Email queue with rate limiting (Resend: 2/sec limit)
@@ -29,20 +29,20 @@ export const APP_URL = "https://mishmert.com/";
 export function _deepLinkUrl(type) {
   const base = APP_URL.replace(/\/$/, "");
   const map = {
-    schedule_published:    "schedule",
-    schedule_initial:      "schedule",
-    schedule_full_view:    "schedule",
+    schedule_published: "schedule",
+    schedule_initial: "schedule",
+    schedule_full_view: "schedule",
     schedule_preview_full: "schedule",
-    vacation_approved:     "vacations",
-    vacation_rejected:     "vacations",
-    absence_request:       "vacations",
-    swap_request:          "swaps",
-    swap_decision:         "swaps",
-    block_message:         "blocks",
-    reminder:              "blocks",
+    vacation_approved: "vacations",
+    vacation_rejected: "vacations",
+    absence_request: "vacations",
+    swap_request: "swaps",
+    swap_decision: "swaps",
+    block_message: "blocks",
+    reminder: "blocks",
   };
   const goto = map[type];
-  return goto ? (base + "/?goto=" + goto) : (base + "/");
+  return goto ? base + "/?goto=" + goto : base + "/";
 }
 
 export const _emailQueue = [];
@@ -61,25 +61,32 @@ export async function _processEmailQueue() {
         console.warn("📧 Email skipped: no active session");
         continue;
       }
-      const resp = await fetch("https://zszlqoisokjgvplrcbic.supabase.co/functions/v1/rapid-action", {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + sess.access_token,
-        },
-        body: JSON.stringify({ type, to: toEmail, data: { ...data, appUrl: _deepLinkUrl(type) } })
-      });
-      
+      const resp = await fetch(
+        "https://zszlqoisokjgvplrcbic.supabase.co/functions/v1/rapid-action",
+        {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + sess.access_token,
+          },
+          body: JSON.stringify({
+            type,
+            to: toEmail,
+            data: { ...data, appUrl: _deepLinkUrl(type) },
+          }),
+        }
+      );
+
       // Handle rate limit with retry
       if (resp.status === 429 && retries < 3) {
         console.warn("📧 Rate limited, retry in 2s:", toEmail);
         _emailQueue.unshift({ type, toEmail, data, retries: retries + 1 });
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 2000));
         continue;
       }
-      
-      const result = await resp.json().catch(()=>({}));
+
+      const result = await resp.json().catch(() => ({}));
       if (resp.status >= 200 && resp.status < 300) {
       } else {
         console.warn("📧 ✗ Failed:", resp.status, result);
@@ -88,7 +95,7 @@ export async function _processEmailQueue() {
       console.warn("📧 Network error:", err);
     }
     // Throttle: wait 600ms between requests (~1.6/sec, safe under 2/sec limit)
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 600));
   }
   _emailProcessing = false;
 }

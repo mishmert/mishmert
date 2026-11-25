@@ -12,8 +12,8 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.serviceworker,
-        supabase: "readonly",   // UMD global published by the CDN script in index.html
-        twemoji: "readonly",    // UMD global from the twemoji CDN script
+        supabase: "readonly", // UMD global published by the CDN script in index.html
+        twemoji: "readonly", // UMD global from the twemoji CDN script
       },
     },
     rules: {

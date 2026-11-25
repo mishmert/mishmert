@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
-import { copyFileSync, existsSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import { defineConfig } from "vite";
+import { copyFileSync, existsSync } from "node:fs";
+import { resolve, basename } from "node:path";
 
 // Vite config for Mishmert.
 //
@@ -15,33 +15,33 @@ import { resolve, basename } from 'node:path';
 //    the SW registers against.
 
 const STATIC_FILES = [
-  'sw.js',
-  'manifest.json',
-  'logo-favicon.png',
-  'apple-touch-icon.png',
-  'og-preview.png',
-  'email-banner.png',
-  'icon-72x72.png',
-  'icon-96x96.png',
-  'icon-128x128.png',
-  'icon-144x144.png',
-  'icon-152x152.png',
-  'icon-192x192.png',
-  'icon-384x384.png',
-  'icon-512x512.png',
-  'CNAME',
-  'privacy.html',
+  "sw.js",
+  "manifest.json",
+  "logo-favicon.png",
+  "apple-touch-icon.png",
+  "og-preview.png",
+  "email-banner.png",
+  "icon-72x72.png",
+  "icon-96x96.png",
+  "icon-128x128.png",
+  "icon-144x144.png",
+  "icon-152x152.png",
+  "icon-192x192.png",
+  "icon-384x384.png",
+  "icon-512x512.png",
+  "CNAME",
+  "privacy.html",
 ];
 
 function copyStatic() {
   return {
-    name: 'copy-static',
+    name: "copy-static",
     closeBundle() {
       for (const f of STATIC_FILES) {
         const src = resolve(process.cwd(), f);
         if (existsSync(src)) {
           try {
-            copyFileSync(src, resolve(process.cwd(), 'dist', basename(f)));
+            copyFileSync(src, resolve(process.cwd(), "dist", basename(f)));
           } catch (e) {
             console.warn(`[copy-static] skipped ${f}: ${e.message}`);
           }
@@ -52,21 +52,21 @@ function copyStatic() {
 }
 
 export default defineConfig({
-  root: '.',
-  base: './',
+  root: ".",
+  base: "./",
   publicDir: false,
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     emptyOutDir: true,
-    target: ['es2020', 'safari14', 'chrome90', 'firefox90'],
+    target: ["es2020", "safari14", "chrome90", "firefox90"],
     sourcemap: true,
     rollupOptions: {
-      input: resolve(process.cwd(), 'index.html'),
+      input: resolve(process.cwd(), "index.html"),
       output: {
         manualChunks: undefined,
-        entryFileNames: 'assets/app-[hash].js',
-        chunkFileNames: 'assets/chunk-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
+        entryFileNames: "assets/app-[hash].js",
+        chunkFileNames: "assets/chunk-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
       },
     },
   },

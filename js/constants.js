@@ -5,39 +5,41 @@
 // Loaded as a classic <script> BEFORE the inline app script so its
 // const/let/function names are visible in the inline script's scope.
 
-
 // CONSTANTS
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { getBlockingVacation } from './actions.js';
-export const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+import { getBlockingVacation } from "./actions.js";
+export const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 export const SHIFTS = [
-  { id:"morning",   label:"בוקר",    start:"07:00", end:"15:00", color:"#F59E0B" },
-  { id:"morning2",  label:"בוקר ב׳", start:"09:00", end:"17:00", color:"#F97316" },
-  { id:"afternoon", label:"צהריים",  start:"15:00", end:"23:00", color:"#10B981" },
-  { id:"night",     label:"לילה",    start:"23:00", end:"07:00", color:"#6366F1" },
+  { id: "morning", label: "בוקר", start: "07:00", end: "15:00", color: "#F59E0B" },
+  { id: "morning2", label: "בוקר ב׳", start: "09:00", end: "17:00", color: "#F97316" },
+  { id: "afternoon", label: "צהריים", start: "15:00", end: "23:00", color: "#10B981" },
+  { id: "night", label: "לילה", start: "23:00", end: "07:00", color: "#6366F1" },
 ];
 export const BLOCK_SHIFTS = [
-  { id:"morning",   label:"בוקר",   start:"07:00", end:"17:00", color:"#F59E0B" },
-  { id:"afternoon", label:"צהריים", start:"15:00", end:"23:00", color:"#10B981" },
-  { id:"night",     label:"לילה",   start:"23:00", end:"07:00", color:"#6366F1" },
+  { id: "morning", label: "בוקר", start: "07:00", end: "17:00", color: "#F59E0B" },
+  { id: "afternoon", label: "צהריים", start: "15:00", end: "23:00", color: "#10B981" },
+  { id: "night", label: "לילה", start: "23:00", end: "07:00", color: "#6366F1" },
 ];
 // Per-day overrides for shifts whose hours differ from the base SHIFTS defaults.
 // Thursday: only the night shift is different (starts earlier, ends later — 22:45-07:30
 // instead of the usual 23:00-07:00), because it overlaps into Friday morning handover.
 // Friday/Saturday: all shifts have their own hours (morning + night only — no afternoon).
 export const DAY_SHIFT_OVERRIDES = {
-  4: [ // Thursday — only night overridden, morning/morning2/afternoon inherit from SHIFTS
-    { id:"night", label:"לילה", start:"22:45", end:"08:00", color:"#6366F1" },
+  4: [
+    // Thursday — only night overridden, morning/morning2/afternoon inherit from SHIFTS
+    { id: "night", label: "לילה", start: "22:45", end: "08:00", color: "#6366F1" },
   ],
-  5: [ // Friday
-    { id:"morning", label:"בוקר", start:"07:45", end:"19:45", color:"#F59E0B" },
-    { id:"night",   label:"לילה", start:"19:30", end:"07:30", color:"#6366F1" },
+  5: [
+    // Friday
+    { id: "morning", label: "בוקר", start: "07:45", end: "19:45", color: "#F59E0B" },
+    { id: "night", label: "לילה", start: "19:30", end: "07:30", color: "#6366F1" },
   ],
-  6: [ // Saturday
-    { id:"morning", label:"בוקר", start:"07:15", end:"19:15", color:"#F59E0B" },
-    { id:"night",   label:"לילה", start:"19:00", end:"07:00", color:"#6366F1" },
+  6: [
+    // Saturday
+    { id: "morning", label: "בוקר", start: "07:15", end: "19:15", color: "#F59E0B" },
+    { id: "night", label: "לילה", start: "19:00", end: "07:00", color: "#6366F1" },
   ],
 };
 // Generic weekend fallback (used in places where the specific day isn't known — e.g. rules
@@ -45,17 +47,17 @@ export const DAY_SHIFT_OVERRIDES = {
 export const WEEKEND_SHIFTS = DAY_SHIFT_OVERRIDES[6];
 
 export function getShiftsForDate(date) {
-  const dt = new Date(date+"T00:00:00");
+  const dt = new Date(date + "T00:00:00");
   const day = dt.getDay();
   // Fri/Sat: return ONLY the two shifts that run (morning + night)
   if (day === 5 || day === 6) return DAY_SHIFT_OVERRIDES[day];
   // Other weekdays: apply overrides on top of the default SHIFTS list
   const overrides = DAY_SHIFT_OVERRIDES[day];
   if (!overrides) return SHIFTS;
-  return SHIFTS.map(sh => overrides.find(o => o.id === sh.id) || sh);
+  return SHIFTS.map((sh) => overrides.find((o) => o.id === sh.id) || sh);
 }
-export const SHIFT_BY_ID = Object.fromEntries(SHIFTS.map(s=>[s.id,s]));
-export const SHIFT_LABELS = Object.fromEntries(SHIFTS.map(s=>[s.id,s.label]));
+export const SHIFT_BY_ID = Object.fromEntries(SHIFTS.map((s) => [s.id, s]));
+export const SHIFT_LABELS = Object.fromEntries(SHIFTS.map((s) => [s.id, s.label]));
 
 // ══════════════════════════════════════════════════════
 // RULE ENGINE — pluggable scheduling rules
@@ -70,71 +72,90 @@ export const RULES = {
     enabled: true,
     check: (ctx) => {
       // Partial-day aware: on the first/last day, only specific shifts may be blocked.
-      const v = (typeof getBlockingVacation === "function")
-        ? getBlockingVacation(ctx.emp.id, ctx.dateStr, ctx.shiftId)
-        : ctx.S.vacations.find(vv => vv.employee_id === ctx.emp.id && vv.status === "approved" && ctx.dateStr >= vv.start_date && ctx.dateStr <= vv.end_date);
+      const v =
+        typeof getBlockingVacation === "function"
+          ? getBlockingVacation(ctx.emp.id, ctx.dateStr, ctx.shiftId)
+          : ctx.S.vacations.find(
+              (vv) =>
+                vv.employee_id === ctx.emp.id &&
+                vv.status === "approved" &&
+                ctx.dateStr >= vv.start_date &&
+                ctx.dateStr <= vv.end_date
+            );
       return v ? { blocked: true, reason: "חופשה" } : null;
-    }
+    },
   },
   exclusion: {
     name: "השעיה זמנית",
     enabled: true,
     check: (ctx) => {
       const e = ctx.emp;
-      if (e.exclude_from && e.exclude_to && ctx.dateStr >= e.exclude_from && ctx.dateStr <= e.exclude_to) {
+      if (
+        e.exclude_from &&
+        e.exclude_to &&
+        ctx.dateStr >= e.exclude_from &&
+        ctx.dateStr <= e.exclude_to
+      ) {
         return { blocked: true, reason: e.exclude_reason || "השעיה" };
       }
       return null;
-    }
+    },
   },
   activeDays: {
     name: "ימים פעילים",
     enabled: true,
     check: (ctx) => {
-      const active = ctx.emp.active_days || [0,1,2,3,4,5,6];
+      const active = ctx.emp.active_days || [0, 1, 2, 3, 4, 5, 6];
       if (!active.includes(ctx.dayOfWeek)) return { blocked: true, reason: "יום לא פעיל" };
       return null;
-    }
+    },
   },
   allowedShifts: {
     name: "משמרות מותרות",
     enabled: true,
     check: (ctx) => {
-      const allowed = ctx.emp.allowed_shifts || SHIFTS.map(s=>s.id);
+      const allowed = ctx.emp.allowed_shifts || SHIFTS.map((s) => s.id);
       if (!allowed.includes(ctx.shiftId)) return { blocked: true, reason: "משמרת לא מותרת" };
       return null;
-    }
+    },
   },
   maxShifts: {
     name: "מקסימום משמרות",
     enabled: true,
     check: (ctx) => {
       const max = ctx.emp.max_shifts_per_week || 5;
-      if ((ctx.totalCount[ctx.emp.id] || 0) >= max) return { blocked: true, reason: "מקסימום הגיע" };
+      if ((ctx.totalCount[ctx.emp.id] || 0) >= max)
+        return { blocked: true, reason: "מקסימום הגיע" };
       return null;
-    }
+    },
   },
   alreadyToday: {
     name: "כבר עובד היום",
     enabled: true,
     check: (ctx) => {
-      const works = SHIFTS.some(s => s.id !== ctx.shiftId && (ctx.newSched[ctx.dateStr]?.[s.id]||[]).includes(ctx.emp.id));
+      const works = SHIFTS.some(
+        (s) =>
+          s.id !== ctx.shiftId && (ctx.newSched[ctx.dateStr]?.[s.id] || []).includes(ctx.emp.id)
+      );
       return works ? { blocked: true, reason: "כבר עובד היום" } : null;
-    }
+    },
   },
   blockedShift: {
     name: "חסימת עובד",
     enabled: true,
     check: (ctx) => {
       const blockId = ctx.shiftId === "morning2" ? "morning" : ctx.shiftId;
-      const isBlocked = ctx.S.availSubmissions.some(s =>
-        s.employee_id === ctx.emp.id &&
-        (s.slots||[]).some(sl => sl.date === ctx.dateStr && (sl.shift === blockId || sl.shift === ctx.shiftId))
+      const isBlocked = ctx.S.availSubmissions.some(
+        (s) =>
+          s.employee_id === ctx.emp.id &&
+          (s.slots || []).some(
+            (sl) => sl.date === ctx.dateStr && (sl.shift === blockId || sl.shift === ctx.shiftId)
+          )
       );
       return isBlocked ? { blocked: true, reason: "עובד חסם" } : null;
-    }
+    },
   },
-  
+
   // === SCORING RULES ===
   equalDistribution: {
     name: "חלוקה שווה",
@@ -154,7 +175,7 @@ export const RULES = {
       // Every existing shift subtracts more strongly than before (was -15, now -30).
       score -= count * 30;
       return { score };
-    }
+    },
   },
   shiftTypeVariety: {
     name: "חלוקה הוגנת לפי סוג משמרת",
@@ -165,17 +186,23 @@ export const RULES = {
       // fixes that by heavily favoring whoever has done the FEWEST of the shift-type
       // we're currently filling.
       const myShiftCounts = ctx.shiftTypeCount[ctx.emp.id] || {};
-      const isMorningOnly = ctx.emp.allowed_shifts && ctx.emp.allowed_shifts.length > 0 &&
-        !ctx.emp.allowed_shifts.includes("afternoon") && !ctx.emp.allowed_shifts.includes("night");
+      const isMorningOnly =
+        ctx.emp.allowed_shifts &&
+        ctx.emp.allowed_shifts.length > 0 &&
+        !ctx.emp.allowed_shifts.includes("afternoon") &&
+        !ctx.emp.allowed_shifts.includes("night");
       if (isMorningOnly) return { score: 0 };
 
       // Group morning+morning2 together, since they overlap in role.
-      const morningTotal = (myShiftCounts["morning"]||0) + (myShiftCounts["morning2"]||0);
+      const morningTotal = (myShiftCounts["morning"] || 0) + (myShiftCounts["morning2"] || 0);
       const afternoonTotal = myShiftCounts["afternoon"] || 0;
       const nightTotal = myShiftCounts["night"] || 0;
       const isMorningShift = ctx.shiftId === "morning" || ctx.shiftId === "morning2";
-      const thisTypeTotal = isMorningShift ? morningTotal
-        : (ctx.shiftId === "afternoon" ? afternoonTotal : nightTotal);
+      const thisTypeTotal = isMorningShift
+        ? morningTotal
+        : ctx.shiftId === "afternoon"
+          ? afternoonTotal
+          : nightTotal;
 
       // What's the target per type? Total shifts ÷ 3 types, roughly.
       // Per-employee ideal — if this employee's max is 4, they should get ~1.3 of each type;
@@ -213,7 +240,7 @@ export const RULES = {
       if (thisTypeTotal >= 2 && minType === 0) score -= 400;
 
       return { score };
-    }
+    },
   },
   weekendFairness: {
     name: "חלוקת סופ״ש שווה",
@@ -221,7 +248,7 @@ export const RULES = {
     check: (ctx) => {
       if (!ctx.isWeekend) return { score: 0 };
       const wkCount = ctx.weekendCount[ctx.emp.id] || 0;
-      const totalWk = Object.values(ctx.weekendCount).reduce((a,b)=>a+b,0);
+      const totalWk = Object.values(ctx.weekendCount).reduce((a, b) => a + b, 0);
       const avgWk = totalWk / (ctx.S.employees.length || 1);
       let score = 0;
       // Within-this-week balance: don't stack too many weekend shifts on one person.
@@ -253,7 +280,7 @@ export const RULES = {
       if (pastOff >= 2) score += 20;
 
       return { score };
-    }
+    },
   },
   restBetweenShifts: {
     name: "מנוחה בין משמרות",
@@ -269,35 +296,46 @@ export const RULES = {
       // the SAME table that the schedule for that day would have used.
       // Reuses getShiftsForDate() so day-specific hour overrides (Thu-night 22:45-07:30,
       // Fri/Sat hours, etc.) apply consistently to rest-checks, not just to display.
-      const dateStrForDefs = (dt) => dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");
+      const dateStrForDefs = (dt) =>
+        dt.getFullYear() +
+        "-" +
+        String(dt.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(dt.getDate()).padStart(2, "0");
       const findDef = (id, dt) => {
         const dayDefs = getShiftsForDate(dateStrForDefs(dt));
-        return dayDefs.find(sh => sh.id === id) || SHIFTS.find(sh => sh.id === id);
+        return dayDefs.find((sh) => sh.id === id) || SHIFTS.find((sh) => sh.id === id);
       };
 
       const thisDef = findDef(ctx.shiftId, ctx.dateObj);
       if (!thisDef) return { score: 0 };
 
       const startHM = (thisDef.start || "07:00").split(":").map(Number);
-      const shiftStartTs = ctx.dateObj.getTime() + startHM[0]*3600000 + startHM[1]*60000;
+      const shiftStartTs = ctx.dateObj.getTime() + startHM[0] * 3600000 + startHM[1] * 60000;
 
       const yesterday = new Date(ctx.dateObj.getTime() - 86400000);
-      const yStr = yesterday.getFullYear()+"-"+String(yesterday.getMonth()+1).padStart(2,"0")+"-"+String(yesterday.getDate()).padStart(2,"0");
+      const yStr =
+        yesterday.getFullYear() +
+        "-" +
+        String(yesterday.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(yesterday.getDate()).padStart(2, "0");
       // dayIdx > 0 → yesterday is inside the week being scheduled.
       // dayIdx === 0 → today is Sunday, so yesterday (Saturday) lives in last week's saved schedule.
-      const yShifts = (ctx.dayIdx > 0 ? (ctx.newSched[yStr] || {}) : ((ctx.S.schedule && ctx.S.schedule[yStr]) || {}));
+      const yShifts =
+        ctx.dayIdx > 0 ? ctx.newSched[yStr] || {} : (ctx.S.schedule && ctx.S.schedule[yStr]) || {};
 
       let minRestHours = Infinity;
-      Object.keys(yShifts).forEach(prevShiftId => {
+      Object.keys(yShifts).forEach((prevShiftId) => {
         if (!(yShifts[prevShiftId] || []).includes(ctx.emp.id)) return;
         const prevSh = findDef(prevShiftId, yesterday);
         if (!prevSh) return;
         const endHM = (prevSh.end || "00:00").split(":").map(Number);
         const startHM2 = (prevSh.start || "00:00").split(":").map(Number);
-        const startMin = startHM2[0]*60 + startHM2[1];
-        const endMin = endHM[0]*60 + endHM[1];
+        const startMin = startHM2[0] * 60 + startHM2[1];
+        const endMin = endHM[0] * 60 + endHM[1];
         // If end <= start, the shift rolls past midnight (night shifts).
-        let endTs = yesterday.getTime() + endHM[0]*3600000 + endHM[1]*60000;
+        let endTs = yesterday.getTime() + endHM[0] * 3600000 + endHM[1] * 60000;
         if (endMin <= startMin) endTs += 86400000;
         const restHours = (shiftStartTs - endTs) / 3600000;
         if (restHours < minRestHours) minRestHours = restHours;
@@ -311,7 +349,7 @@ export const RULES = {
       if (minRestHours < 11) return { score: -60 };
       if (minRestHours < 16) return { score: -20 };
       return { score: 0 };
-    }
+    },
   },
   consecutiveDays: {
     name: "מניעת רצף ימים",
@@ -323,15 +361,21 @@ export const RULES = {
       // week or last week's saved schedule.
       const allShiftDefs = [...SHIFTS, ...WEEKEND_SHIFTS];
       const wasWorking = (dayOffset) => {
-        const d = new Date(ctx.dateObj.getTime() - dayOffset*86400000);
-        const dStr = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-        const source = (ctx.dayIdx - dayOffset >= 0)
-          ? (ctx.newSched[dStr] || {})
-          : ((ctx.S.schedule && ctx.S.schedule[dStr]) || {});
-        return allShiftDefs.some(s => (source[s.id] || []).includes(ctx.emp.id));
+        const d = new Date(ctx.dateObj.getTime() - dayOffset * 86400000);
+        const dStr =
+          d.getFullYear() +
+          "-" +
+          String(d.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(d.getDate()).padStart(2, "0");
+        const source =
+          ctx.dayIdx - dayOffset >= 0
+            ? ctx.newSched[dStr] || {}
+            : (ctx.S.schedule && ctx.S.schedule[dStr]) || {};
+        return allShiftDefs.some((s) => (source[s.id] || []).includes(ctx.emp.id));
       };
-      return { score: (wasWorking(1) && wasWorking(2)) ? -25 : 0 };
-    }
+      return { score: wasWorking(1) && wasWorking(2) ? -25 : 0 };
+    },
   },
   blockOverIdeal: {
     name: "חסימת חריגה",
@@ -339,13 +383,13 @@ export const RULES = {
     check: (ctx) => {
       const count = ctx.totalCount[ctx.emp.id] || 0;
       if (count < ctx.idealShifts + 1) return { score: 0 };
-      const someoneBelow = ctx.S.employees.some(o => 
-        o.id !== ctx.emp.id && (ctx.totalCount[o.id]||0) < ctx.idealShifts - 1
+      const someoneBelow = ctx.S.employees.some(
+        (o) => o.id !== ctx.emp.id && (ctx.totalCount[o.id] || 0) < ctx.idealShifts - 1
       );
       if (someoneBelow) return { blocked: true, reason: "אחרים מתחת לממוצע" };
       return { score: 0 };
-    }
-  }
+    },
+  },
 };
 
 // Run all rules and return final result
@@ -438,7 +482,20 @@ export const JEWISH_HOLIDAYS = {
   "2027-12-31": "חנוכה",
   "2028-01-01": "חנוכה",
 };
-export function getHoliday(dateStr) { return JEWISH_HOLIDAYS[dateStr] || null; }
+export function getHoliday(dateStr) {
+  return JEWISH_HOLIDAYS[dateStr] || null;
+}
 
-export const EMP_COLORS = ["#3B82F6","#EC4899","#14B8A6","#F97316","#8B5CF6","#EF4444","#06B6D4","#84CC16","#F59E0B","#6366F1"];
+export const EMP_COLORS = [
+  "#3B82F6",
+  "#EC4899",
+  "#14B8A6",
+  "#F97316",
+  "#8B5CF6",
+  "#EF4444",
+  "#06B6D4",
+  "#84CC16",
+  "#F59E0B",
+  "#6366F1",
+];
 export const ec = (idx) => EMP_COLORS[idx % EMP_COLORS.length];

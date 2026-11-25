@@ -29,15 +29,21 @@
 
 "use strict";
 
-import { S, persistOfflineCache, restoreAvailDraft, restoreOfflineCache } from './state.js';
-import { sb } from './sb.js';
-import { checkAutoReminder, isUserBusy, render, startAutoRefresh } from './main.js';
-import { fmtYMD, friendlyError, getWeekDates, shiftDurationHours, toast } from './utils.js';
-import { SHIFTS, SHIFT_BY_ID, SHIFT_LABELS, WEEKEND_SHIFTS, getShiftsForDate } from './constants.js';
-import { applyDeepLink } from './router.js';
-import { preloadAuthenticatedViews } from './view-registry.js';
-import { isManager } from './roles.js';
-import { _deepLinkUrl } from './email.js';
+import { S, persistOfflineCache, restoreAvailDraft, restoreOfflineCache } from "./state.js";
+import { sb } from "./sb.js";
+import { checkAutoReminder, isUserBusy, render, startAutoRefresh } from "./main.js";
+import { fmtYMD, friendlyError, getWeekDates, shiftDurationHours, toast } from "./utils.js";
+import {
+  SHIFTS,
+  SHIFT_BY_ID,
+  SHIFT_LABELS,
+  WEEKEND_SHIFTS,
+  getShiftsForDate,
+} from "./constants.js";
+import { applyDeepLink } from "./router.js";
+import { preloadAuthenticatedViews } from "./view-registry.js";
+import { isManager } from "./roles.js";
+import { _deepLinkUrl } from "./email.js";
 export async function loadAll(user) {
   S.user = user;
 
@@ -47,7 +53,7 @@ export async function loadAll(user) {
   // first and S.view transitions to the authenticated app, render() will
   // find the chunks ready; if not, it'll find the "טוען תצוגה..." placeholder
   // for a few hundred ms and then rerender.
-  preloadAuthenticatedViews().catch(err => console.warn("view preload failed:", err));
+  preloadAuthenticatedViews().catch((err) => console.warn("view preload failed:", err));
 
   // ═══ 2FA gate ═══
   // Enforced for all users. Flow:
@@ -78,8 +84,11 @@ export async function loadAll(user) {
 
   let profile = null;
   try {
-    const res = await sb.from("profiles")
-      .select("*, business:businesses(*)").eq("id", user.id).maybeSingle();
+    const res = await sb
+      .from("profiles")
+      .select("*, business:businesses(*)")
+      .eq("id", user.id)
+      .maybeSingle();
     profile = res.data;
   } catch (netErr) {
     console.warn("Profile load failed — trying offline cache:", netErr);
@@ -94,50 +103,85 @@ export async function loadAll(user) {
       return;
     }
     // No cache either — bounce to login with an error.
-    S.view = "login"; render();
+    S.view = "login";
+    render();
     toast("אין חיבור לרשת ואין מידע שמור", "err");
     return;
   }
-  if (!profile) { S.view="login"; render(); return; }
-  
+  if (!profile) {
+    S.view = "login";
+    render();
+    return;
+  }
+
   // 🛡️ הגנה: אם למשתמש המחובר חסר שם במסד הנתונים, ניתן לו שם זמני
   profile.name = profile.name || "משתמש ללא שם";
-  
+
   S.profile = profile;
   S.business = profile.business;
-  S.systems = profile.business?.systems || [];  // shared system tags
-  S.qualifications = profile.business?.qualifications || {systems:{},shifts:{}};  // qualification expiry days
-  
+  S.systems = profile.business?.systems || []; // shared system tags
+  S.qualifications = profile.business?.qualifications || { systems: {}, shifts: {} }; // qualification expiry days
+
   // Apply saved shift hours from business config
   const savedHours = profile.business?.shift_hours || {};
-  if (savedHours.morning?.start) { SHIFTS[0].start = savedHours.morning.start; SHIFTS[0].end = savedHours.morning.end; }
-  if (savedHours.morning2?.start) { SHIFTS[1].start = savedHours.morning2.start; SHIFTS[1].end = savedHours.morning2.end; }
-  if (savedHours.afternoon?.start) { SHIFTS[2].start = savedHours.afternoon.start; SHIFTS[2].end = savedHours.afternoon.end; }
-  if (savedHours.night?.start) { SHIFTS[3].start = savedHours.night.start; SHIFTS[3].end = savedHours.night.end; }
-  if (savedHours.weMorning?.start) { WEEKEND_SHIFTS[0].start = savedHours.weMorning.start; WEEKEND_SHIFTS[0].end = savedHours.weMorning.end; }
-  if (savedHours.weNight?.start) { WEEKEND_SHIFTS[1].start = savedHours.weNight.start; WEEKEND_SHIFTS[1].end = savedHours.weNight.end; }
+  if (savedHours.morning?.start) {
+    SHIFTS[0].start = savedHours.morning.start;
+    SHIFTS[0].end = savedHours.morning.end;
+  }
+  if (savedHours.morning2?.start) {
+    SHIFTS[1].start = savedHours.morning2.start;
+    SHIFTS[1].end = savedHours.morning2.end;
+  }
+  if (savedHours.afternoon?.start) {
+    SHIFTS[2].start = savedHours.afternoon.start;
+    SHIFTS[2].end = savedHours.afternoon.end;
+  }
+  if (savedHours.night?.start) {
+    SHIFTS[3].start = savedHours.night.start;
+    SHIFTS[3].end = savedHours.night.end;
+  }
+  if (savedHours.weMorning?.start) {
+    WEEKEND_SHIFTS[0].start = savedHours.weMorning.start;
+    WEEKEND_SHIFTS[0].end = savedHours.weMorning.end;
+  }
+  if (savedHours.weNight?.start) {
+    WEEKEND_SHIFTS[1].start = savedHours.weNight.start;
+    WEEKEND_SHIFTS[1].end = savedHours.weNight.end;
+  }
 
   // Per-business shift TYPE selection (which shift types exist, and which apply on Fri/Sat).
   // Only takes effect if a business has explicitly configured this (super admin) — otherwise
   // behavior is unchanged (same hardcoded 4 weekday / 2 weekend shifts as always).
   const baseShiftDefs = {};
-  SHIFTS.forEach(s => baseShiftDefs[s.id] = { ...s } );
+  SHIFTS.forEach((s) => (baseShiftDefs[s.id] = { ...s }));
   const shiftCfg = profile.business?.shift_config;
   if (shiftCfg && Array.isArray(shiftCfg.weekday_shifts) && shiftCfg.weekday_shifts.length > 0) {
-    const filtered = shiftCfg.weekday_shifts.map(id => baseShiftDefs[id]).filter(Boolean);
-    SHIFTS.length = 0; SHIFTS.push(...filtered);
-    Object.keys(SHIFT_BY_ID).forEach(k=>delete SHIFT_BY_ID[k]);
-    Object.keys(SHIFT_LABELS).forEach(k=>delete SHIFT_LABELS[k]);
-    SHIFTS.forEach(s=>{ SHIFT_BY_ID[s.id]=s; SHIFT_LABELS[s.id]=s.label; });
+    const filtered = shiftCfg.weekday_shifts.map((id) => baseShiftDefs[id]).filter(Boolean);
+    SHIFTS.length = 0;
+    SHIFTS.push(...filtered);
+    Object.keys(SHIFT_BY_ID).forEach((k) => delete SHIFT_BY_ID[k]);
+    Object.keys(SHIFT_LABELS).forEach((k) => delete SHIFT_LABELS[k]);
+    SHIFTS.forEach((s) => {
+      SHIFT_BY_ID[s.id] = s;
+      SHIFT_LABELS[s.id] = s.label;
+    });
   }
   if (shiftCfg && Array.isArray(shiftCfg.weekend_shifts) && shiftCfg.weekend_shifts.length > 0) {
-    const weFiltered = shiftCfg.weekend_shifts.map(id => baseShiftDefs[id]).filter(Boolean);
-    WEEKEND_SHIFTS.length = 0; WEEKEND_SHIFTS.push(...weFiltered);
+    const weFiltered = shiftCfg.weekend_shifts.map((id) => baseShiftDefs[id]).filter(Boolean);
+    WEEKEND_SHIFTS.length = 0;
+    WEEKEND_SHIFTS.push(...weFiltered);
   }
   // Old invite code system removed — replaced with secure invitations
 
   await loadEmployees();
-  await Promise.all([loadVacations(), loadSwapRequests(), loadAvailSubmissions(), loadSchedule(), loadInvitations(), loadJoinRequests()]);
+  await Promise.all([
+    loadVacations(),
+    loadSwapRequests(),
+    loadAvailSubmissions(),
+    loadSchedule(),
+    loadInvitations(),
+    loadJoinRequests(),
+  ]);
   S._lastDataRefresh = Date.now();
 
   // Restore any availability-blocks draft the user left behind last time.
@@ -170,12 +214,12 @@ export async function loadAll(user) {
 export let _realtimeChannels = [];
 export function setupRealtime() {
   // Clean old channels
-  _realtimeChannels.forEach(ch => sb.removeChannel(ch));
+  _realtimeChannels.forEach((ch) => sb.removeChannel(ch));
   _realtimeChannels = [];
-  
+
   if (!S.profile?.business_id) return;
   const bizId = S.profile.business_id;
-  
+
   // Subscribe to schedule changes.
   // Every realtime hit also bumps S._lastDataRefresh (so the header "live" chip is
   // accurate) and invalidates the 60s preload caches for the "who's on shift now" and
@@ -186,29 +230,71 @@ export function setupRealtime() {
     S._nowCardPreloaded = 0;
     S._nextShiftPreloaded = 0;
   };
-  const schedChannel = sb.channel("schedule_changes_" + bizId)
-    .on("postgres_changes", {event:"*",schema:"public",table:"schedules",filter:"business_id=eq."+bizId},
-      () => { invalidateCaches(); if (!isUserBusy()) { loadSchedule().then(()=>render()); } })
-    .on("postgres_changes", {event:"*",schema:"public",table:"assignments"},
-      () => { invalidateCaches(); if (!isUserBusy()) { loadSchedule().then(()=>render()); } })
-    .on("postgres_changes", {event:"*",schema:"public",table:"availability_submissions"},
-      () => { S._lastDataRefresh = Date.now(); if (!isUserBusy()) { loadAvailSubmissions().then(()=>render()); } })
-    .on("postgres_changes", {event:"*",schema:"public",table:"swaps"},
-      () => { S._lastDataRefresh = Date.now(); if (!isUserBusy()) { loadSwapRequests().then(()=>render()); } })
-    .on("postgres_changes", {event:"*",schema:"public",table:"shift_join_requests"},
-      () => { S._lastDataRefresh = Date.now(); if (!isUserBusy()) { loadJoinRequests().then(()=>render()); } })
-    .on("postgres_changes", {event:"*",schema:"public",table:"vacations"},
-      () => { S._lastDataRefresh = Date.now(); if (!isUserBusy()) { loadVacations().then(()=>render()); } })
-    .on("postgres_changes", {event:"*",schema:"public",table:"profiles",filter:"business_id=eq."+bizId},
-      () => { S._lastDataRefresh = Date.now(); if (!isUserBusy()) { loadEmployees().then(()=>render()); } })
+  const schedChannel = sb
+    .channel("schedule_changes_" + bizId)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "schedules", filter: "business_id=eq." + bizId },
+      () => {
+        invalidateCaches();
+        if (!isUserBusy()) {
+          loadSchedule().then(() => render());
+        }
+      }
+    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "assignments" }, () => {
+      invalidateCaches();
+      if (!isUserBusy()) {
+        loadSchedule().then(() => render());
+      }
+    })
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "availability_submissions" },
+      () => {
+        S._lastDataRefresh = Date.now();
+        if (!isUserBusy()) {
+          loadAvailSubmissions().then(() => render());
+        }
+      }
+    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "swaps" }, () => {
+      S._lastDataRefresh = Date.now();
+      if (!isUserBusy()) {
+        loadSwapRequests().then(() => render());
+      }
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "shift_join_requests" }, () => {
+      S._lastDataRefresh = Date.now();
+      if (!isUserBusy()) {
+        loadJoinRequests().then(() => render());
+      }
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "vacations" }, () => {
+      S._lastDataRefresh = Date.now();
+      if (!isUserBusy()) {
+        loadVacations().then(() => render());
+      }
+    })
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "profiles", filter: "business_id=eq." + bizId },
+      () => {
+        S._lastDataRefresh = Date.now();
+        if (!isUserBusy()) {
+          loadEmployees().then(() => render());
+        }
+      }
+    )
     .subscribe();
-  
+
   _realtimeChannels.push(schedChannel);
 }
 
 export async function loadInvitations() {
   if (!S.profile?.business_id || !isManager()) return;
-  const { data } = await sb.from("invitations")
+  const { data } = await sb
+    .from("invitations")
     .select("*")
     .eq("business_id", S.profile.business_id)
     .order("created_at", { ascending: false });
@@ -217,12 +303,15 @@ export async function loadInvitations() {
 
 export async function loadEmployees() {
   if (!S.profile?.business_id) return;
-  const { data } = await sb.from("profiles")
-    .select("*").eq("business_id", S.profile.business_id)
-    .eq("is_deleted", false).order("name");
-  
+  const { data } = await sb
+    .from("profiles")
+    .select("*")
+    .eq("business_id", S.profile.business_id)
+    .eq("is_deleted", false)
+    .order("name");
+
   // 🛡️ הגנה: עוברים על כל העובדים ומוודאים שיש להם שם כדי למנוע קריסות
-  S.employees = (data || []).map(emp => {
+  S.employees = (data || []).map((emp) => {
     emp.name = emp.name || "עובד ללא שם";
     return emp;
   });
@@ -246,40 +335,56 @@ export async function loadMyMonthData(empId, monthInfo) {
   const rangeStart = new Date(monthInfo.first);
   rangeStart.setDate(rangeStart.getDate() - 6);
 
-  const { data: scheds } = await sb.from("schedules").select("id")
-    .eq("business_id", bizId).eq("published", true)
-    .gte("week_start", fmtYMD(rangeStart)).lte("week_start", monthInfo.lastStr);
+  const { data: scheds } = await sb
+    .from("schedules")
+    .select("id")
+    .eq("business_id", bizId)
+    .eq("published", true)
+    .gte("week_start", fmtYMD(rangeStart))
+    .lte("week_start", monthInfo.lastStr);
 
-  const schedIds = (scheds||[]).map(s=>s.id);
+  const schedIds = (scheds || []).map((s) => s.id);
   if (schedIds.length === 0) return empty;
 
-  const { data: assigns } = await sb.from("assignments")
+  const { data: assigns } = await sb
+    .from("assignments")
     .select("date,shift,custom_start,custom_end")
-    .eq("employee_id", empId).in("schedule_id", schedIds)
-    .gte("date", monthInfo.firstStr).lte("date", monthInfo.lastStr)
+    .eq("employee_id", empId)
+    .in("schedule_id", schedIds)
+    .gte("date", monthInfo.firstStr)
+    .lte("date", monthInfo.lastStr)
     .order("date");
 
   const shifts = [];
   const byShift = {};
   let totalHours = 0;
-  (assigns||[]).forEach(a => {
-    const def = getShiftsForDate(a.date).find(s=>s.id===a.shift) || SHIFT_BY_ID[a.shift];
-    const start = a.custom_start ? a.custom_start.slice(0,5) : def?.start;
-    const end = a.custom_end ? a.custom_end.slice(0,5) : def?.end;
+  (assigns || []).forEach((a) => {
+    const def = getShiftsForDate(a.date).find((s) => s.id === a.shift) || SHIFT_BY_ID[a.shift];
+    const start = a.custom_start ? a.custom_start.slice(0, 5) : def?.start;
+    const end = a.custom_end ? a.custom_end.slice(0, 5) : def?.end;
     const hours = shiftDurationHours(start, end);
     totalHours += hours;
-    byShift[a.shift] = (byShift[a.shift]||0) + 1;
-    shifts.push({ date: a.date, shift: a.shift, label: def?.label || a.shift, color: def?.color || "#64748B", start, end, hours });
+    byShift[a.shift] = (byShift[a.shift] || 0) + 1;
+    shifts.push({
+      date: a.date,
+      shift: a.shift,
+      label: def?.label || a.shift,
+      color: def?.color || "#64748B",
+      start,
+      end,
+      hours,
+    });
   });
 
   // Vacation days used this month, from the already-loaded S.vacations
   let vacationDays = 0;
-  (S.vacations||[]).forEach(v => {
+  (S.vacations || []).forEach((v) => {
     if (v.employee_id !== empId || v.status !== "approved") return;
     const s = v.start_date > monthInfo.firstStr ? v.start_date : monthInfo.firstStr;
     const en = v.end_date < monthInfo.lastStr ? v.end_date : monthInfo.lastStr;
     if (s <= en) {
-      vacationDays += Math.round((new Date(en+"T00:00:00") - new Date(s+"T00:00:00"))/86400000) + 1;
+      vacationDays +=
+        Math.round((new Date(en + "T00:00:00") - new Date(s + "T00:00:00")) / 86400000) + 1;
     }
   });
 
@@ -291,10 +396,11 @@ export async function loadMyMonthData(empId, monthInfo) {
 // ══════════════════════════════════════════════════════
 // Public VAPID key — safe to embed client-side (pairs with the private key kept
 // only as an Edge Function secret on Supabase).
-export const VAPID_PUBLIC_KEY = "BDXz-WWumCD7MRs7GFlenjr3jhk7Qmwmk_TAwdSHHu9Rel2pt7cJj7FJsy9CBMYX4FhttjTus2f3HNQDVLB5mhI";
+export const VAPID_PUBLIC_KEY =
+  "BDXz-WWumCD7MRs7GFlenjr3jhk7Qmwmk_TAwdSHHu9Rel2pt7cJj7FJsy9CBMYX4FhttjTus2f3HNQDVLB5mhI";
 
 export function _urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   const outputArray = new Uint8Array(rawData.length);
@@ -319,7 +425,7 @@ export async function enablePushNotifications() {
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
     }
     const raw = sub.toJSON();
@@ -328,14 +434,21 @@ export async function enablePushNotifications() {
       render();
       return;
     }
-    const { error } = await sb.from("push_subscriptions").upsert({
-      business_id: S.profile.business_id,
-      employee_id: S.user.id,
-      endpoint: raw.endpoint,
-      p256dh: raw.keys.p256dh,
-      auth: raw.keys.auth
-    }, { onConflict: "endpoint" });
-    if (error) { console.error(error); toast("שמירה נכשלה — " + friendlyError(error), "err"); return; }
+    const { error } = await sb.from("push_subscriptions").upsert(
+      {
+        business_id: S.profile.business_id,
+        employee_id: S.user.id,
+        endpoint: raw.endpoint,
+        p256dh: raw.keys.p256dh,
+        auth: raw.keys.auth,
+      },
+      { onConflict: "endpoint" }
+    );
+    if (error) {
+      console.error(error);
+      toast("שמירה נכשלה — " + friendlyError(error), "err");
+      return;
+    }
     toast("🔔 התראות Push הופעלו!");
   } catch (err) {
     console.error("Push subscribe failed:", err);
@@ -364,12 +477,12 @@ export async function disablePushNotifications() {
 export async function sendPush(type, employeeId, data) {
   if (!employeeId) return;
   const settingMap = {
-    "schedule_published": "notif_publish",
-    "schedule_initial": "notif_publish",
-    "vacation_approved": "notif_vac_approved",
-    "vacation_rejected": "notif_vac_approved",
-    "swap_decision": "notif_swap",
-    "absence_request": "notif_swap",
+    schedule_published: "notif_publish",
+    schedule_initial: "notif_publish",
+    vacation_approved: "notif_vac_approved",
+    vacation_rejected: "notif_vac_approved",
+    swap_decision: "notif_swap",
+    absence_request: "notif_swap",
   };
   const settingKey = settingMap[type];
   const notifSettings = S.business?.notification_settings || {};
@@ -381,16 +494,19 @@ export async function sendPush(type, employeeId, data) {
     // it can authorise the push against the caller's tenant. The anon key
     // alone is rejected.
     const sess = (await sb.auth.getSession())?.data?.session;
-    if (!sess?.access_token) { console.warn("🔔 Push skipped: no session"); return; }
+    if (!sess?.access_token) {
+      console.warn("🔔 Push skipped: no session");
+      return;
+    }
     await fetch("https://zszlqoisokjgvplrcbic.supabase.co/functions/v1/rapid-action", {
       method: "POST",
       mode: "cors",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + sess.access_token },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + sess.access_token },
       body: JSON.stringify({
         type: "push",
         to: [employeeId],
-        data: { title: content.title, body: content.body, url: _deepLinkUrl(type) }
-      })
+        data: { title: content.title, body: content.body, url: _deepLinkUrl(type) },
+      }),
     });
   } catch (err) {
     console.warn("🔔 Push send failed:", err);
@@ -404,18 +520,32 @@ export function _pushContent(type, data) {
     case "schedule_initial":
       return { title: "📋 סידור ראשוני פורסם", body: "שבוע " + (data.weekLabel || "") };
     case "vacation_approved": {
-      const typeLabel = data.type === "reserve" ? "מילואים" : data.type === "exam" ? "מבחן" : "חופשה";
-      return { title: `✅ בקשת ${typeLabel} אושרה`, body: data.startDate + (data.endDate && data.endDate !== data.startDate ? " עד " + data.endDate : "") };
+      const typeLabel =
+        data.type === "reserve" ? "מילואים" : data.type === "exam" ? "מבחן" : "חופשה";
+      return {
+        title: `✅ בקשת ${typeLabel} אושרה`,
+        body:
+          data.startDate +
+          (data.endDate && data.endDate !== data.startDate ? " עד " + data.endDate : ""),
+      };
     }
     case "vacation_rejected": {
-      const typeLabel = data.type === "reserve" ? "מילואים" : data.type === "exam" ? "מבחן" : "חופשה";
+      const typeLabel =
+        data.type === "reserve" ? "מילואים" : data.type === "exam" ? "מבחן" : "חופשה";
       return { title: `❌ בקשת ${typeLabel} נדחתה`, body: data.rejectReason || "לפרטים פנה למנהל" };
     }
     case "swap_decision":
-      return { title: (data.isApproved ? "✅" : "❌") + " בקשת חילוף " + (data.statusText || ""), body: (data.targetDate || "") + " — " + (data.shiftLabel || "") };
+      return {
+        title: (data.isApproved ? "✅" : "❌") + " בקשת חילוף " + (data.statusText || ""),
+        body: (data.targetDate || "") + " — " + (data.shiftLabel || ""),
+      };
     case "absence_request": {
-      const typeLabel = data.type === "reserve" ? "מילואים" : data.type === "exam" ? "מבחן" : "חופשה";
-      return { title: `📥 בקשת ${typeLabel} חדשה`, body: `${data.requesterName || ""} — ${data.startDate || ""}${data.endDate && data.endDate !== data.startDate ? " עד " + data.endDate : ""}` };
+      const typeLabel =
+        data.type === "reserve" ? "מילואים" : data.type === "exam" ? "מבחן" : "חופשה";
+      return {
+        title: `📥 בקשת ${typeLabel} חדשה`,
+        body: `${data.requesterName || ""} — ${data.startDate || ""}${data.endDate && data.endDate !== data.startDate ? " עד " + data.endDate : ""}`,
+      };
     }
     default:
       return { title: "🔔 עדכון חדש", body: "יש עדכון חדש במערכת" };
@@ -427,26 +557,38 @@ export function _pushContent(type, data) {
 // ══════════════════════════════════════════════════════
 export async function loadAvailSubmissions() {
   if (!S.profile?.business_id) return;
-  const { data } = await sb.from("availability_submissions").select("*")
-    .eq("business_id", S.profile.business_id).order("created_at", {ascending:false});
+  const { data } = await sb
+    .from("availability_submissions")
+    .select("*")
+    .eq("business_id", S.profile.business_id)
+    .order("created_at", { ascending: false });
   S.availSubmissions = data || [];
 }
 
 export async function loadSwapRequests() {
   if (!S.profile?.business_id) return;
   // Load from both tables
-  const { data: d1 } = await sb.from("swaps").select("*")
-    .eq("business_id", S.profile.business_id).order("created_at", {ascending:false});
-  const { data: d2 } = await sb.from("swap_requests").select("*")
-    .eq("business_id", S.profile.business_id).order("created_at", {ascending:false});
+  const { data: d1 } = await sb
+    .from("swaps")
+    .select("*")
+    .eq("business_id", S.profile.business_id)
+    .order("created_at", { ascending: false });
+  const { data: d2 } = await sb
+    .from("swap_requests")
+    .select("*")
+    .eq("business_id", S.profile.business_id)
+    .order("created_at", { ascending: false });
   S.swaps = d1 || [];
   S.swapRequests = d2 || [];
 }
 
 export async function loadJoinRequests() {
   if (!S.profile?.business_id) return;
-  const { data } = await sb.from("shift_join_requests").select("*")
-    .eq("business_id", S.profile.business_id).order("created_at", {ascending:false});
+  const { data } = await sb
+    .from("shift_join_requests")
+    .select("*")
+    .eq("business_id", S.profile.business_id)
+    .order("created_at", { ascending: false });
   S.joinRequests = data || [];
 }
 
@@ -458,15 +600,30 @@ export async function loadSchedule() {
   if (!S.profile?.business_id) return;
   const weekDates = getWeekDates(S.weekOffset);
   const weekStart = weekDates[0];
-  const { data: sched } = await sb.from("schedules")
-    .select("*").eq("business_id", S.profile.business_id)
-    .eq("week_start", weekStart).maybeSingle();
+  const { data: sched } = await sb
+    .from("schedules")
+    .select("*")
+    .eq("business_id", S.profile.business_id)
+    .eq("week_start", weekStart)
+    .maybeSingle();
 
-  if (!sched) { S.schedule={}; S.currentPublishType=null; return; }
+  if (!sched) {
+    S.schedule = {};
+    S.currentPublishType = null;
+    return;
+  }
   // Employee can only see published schedules (strict check)
   const userIsEmployee = S.profile?.role === "employee";
-  if (userIsEmployee && !sched.published) { S.schedule={}; S.currentPublishType=null; return; }
-  if (!isManager() && !sched.published) { S.schedule={}; S.currentPublishType=null; return; }
+  if (userIsEmployee && !sched.published) {
+    S.schedule = {};
+    S.currentPublishType = null;
+    return;
+  }
+  if (!isManager() && !sched.published) {
+    S.schedule = {};
+    S.currentPublishType = null;
+    return;
+  }
   // Temporary publish — if visible_until is set and has passed, treat as unpublished for employees.
   // Managers always see what they published, regardless of expiry.
   if (userIsEmployee && sched.published && sched.visible_until) {
@@ -474,7 +631,7 @@ export async function loadSchedule() {
     if (!isNaN(expiry.getTime()) && Date.now() > expiry.getTime()) {
       S.schedule = {};
       S.currentPublishType = null;
-      S.scheduleExpired = true;  // flag so UI can show "being prepared" message
+      S.scheduleExpired = true; // flag so UI can show "being prepared" message
       return;
     }
   }
@@ -489,28 +646,33 @@ export async function loadSchedule() {
     S.schedPublishType[weekStart] = sched.publish_type || (sched.published ? "final" : null);
   }
 
-  const { data: assignments } = await sb.from("assignments")
-    .select("*").eq("schedule_id", sched.id);
+  const { data: assignments } = await sb
+    .from("assignments")
+    .select("*")
+    .eq("schedule_id", sched.id);
 
   const sched_obj = {};
-  weekDates.forEach(d => {
+  weekDates.forEach((d) => {
     sched_obj[d] = {};
-    SHIFTS.forEach(sh => { sched_obj[d][sh.id] = []; });
+    SHIFTS.forEach((sh) => {
+      sched_obj[d][sh.id] = [];
+    });
   });
-  (assignments||[]).forEach(a => {
+  (assignments || []).forEach((a) => {
     if (!sched_obj[a.date]) sched_obj[a.date] = {};
     if (!sched_obj[a.date][a.shift]) sched_obj[a.date][a.shift] = [];
-    if (!sched_obj[a.date][a.shift].includes(a.employee_id)) sched_obj[a.date][a.shift].push(a.employee_id);
+    if (!sched_obj[a.date][a.shift].includes(a.employee_id))
+      sched_obj[a.date][a.shift].push(a.employee_id);
     if (a.custom_start && a.custom_end) {
       // Postgres time columns return HH:MM:SS; the app works with HH:MM everywhere else,
       // so trim the seconds to avoid the ugly "07:45:00-16:00:00" display on chips.
-      S.customHours[a.date+"|"+a.shift+"|"+a.employee_id] = {
-        start: a.custom_start.slice(0,5),
-        end:   a.custom_end.slice(0,5)
+      S.customHours[a.date + "|" + a.shift + "|" + a.employee_id] = {
+        start: a.custom_start.slice(0, 5),
+        end: a.custom_end.slice(0, 5),
       };
     }
     if (a.note) {
-      S.assignmentNotes[a.date+"|"+a.shift+"|"+a.employee_id] = a.note;
+      S.assignmentNotes[a.date + "|" + a.shift + "|" + a.employee_id] = a.note;
     }
   });
   S.schedule = sched_obj;
