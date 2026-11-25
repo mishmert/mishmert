@@ -28,17 +28,18 @@ export const BLOCK_SHIFTS = [
 // Friday/Saturday: all shifts have their own hours (morning + night only — no afternoon).
 export const DAY_SHIFT_OVERRIDES = {
   4: [
-    // Thursday — only night overridden, morning/morning2/afternoon inherit from SHIFTS
-    { id: "night", label: "לילה", start: "22:45", end: "08:00", color: "#6366F1" },
+    // Thursday — only night overridden, morning/morning2/afternoon inherit from SHIFTS.
+    // 22:45–07:40 per owner request 2026-11-25 (was 22:45–08:00).
+    { id: "night", label: "לילה", start: "22:45", end: "07:40", color: "#6366F1" },
   ],
   5: [
-    // Friday
-    { id: "morning", label: "בוקר", start: "07:45", end: "19:45", color: "#F59E0B" },
-    { id: "night", label: "לילה", start: "19:30", end: "07:30", color: "#6366F1" },
+    // Friday — per owner request 2026-11-25 (was 07:45-19:45 / 19:30-07:30).
+    { id: "morning", label: "בוקר", start: "07:30", end: "19:30", color: "#F59E0B" },
+    { id: "night", label: "לילה", start: "19:20", end: "07:20", color: "#6366F1" },
   ],
   6: [
-    // Saturday
-    { id: "morning", label: "בוקר", start: "07:15", end: "19:15", color: "#F59E0B" },
+    // Saturday — per owner request 2026-11-25 (morning was 07:15-19:15; night unchanged).
+    { id: "morning", label: "בוקר", start: "07:10", end: "19:10", color: "#F59E0B" },
     { id: "night", label: "לילה", start: "19:00", end: "07:00", color: "#6366F1" },
   ],
 };
