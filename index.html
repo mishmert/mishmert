@@ -10,11 +10,12 @@
          restrict anything the CF header already allows, so there's no
          risk of intersection breaking the site. They matter when the
          app is loaded outside the CF edge (local preview, service-worker
-         offline) where no response header is present. -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="upgrade-insecure-requests; base-uri 'self'; form-action 'self'; object-src 'none';"
-    />
+         offline) where no response header is present.
+         NB: `upgrade-insecure-requests` was intentionally omitted — it
+         broke WebKit smoke tests on http://localhost:4173 (WebKit upgraded
+         the test URL to https and died on TLS handshake). CF already
+         serves it at the edge in production, where it works correctly. -->
+    <meta http-equiv="Content-Security-Policy" content="base-uri 'self'; form-action 'self'; object-src 'none';" />
     <title>משמרת — ניהול משמרות חכם</title>
     <link rel="icon" type="image/png" href="logo-favicon.png" />
     <link rel="shortcut icon" type="image/png" href="logo-favicon.png" />
