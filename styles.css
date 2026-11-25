@@ -490,16 +490,16 @@ textarea:focus {
    silently behind a scrollbar-less overflow:auto. */
 @media (min-width: 769px) and (max-width: 1499px) {
   .nav {
-    gap: 2px;
+    gap: 4px;
   }
   .nav-btn {
-    padding: 8px 10px;
+    padding: 9px 13px;
   }
   .nav-btn .nav-label {
     display: none;
   }
   .nav-btn > span[style*="font-size:15px"] {
-    font-size: 18px !important;
+    font-size: 22px !important;
   }
   /* Also compact the left side (user area) so the whole header fits —
      otherwise the user-name, role label and full logout button steal the
