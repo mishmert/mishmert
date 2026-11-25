@@ -3,6 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- MSH-202646-002 defense-in-depth: Cloudflare already serves a full
+         Content-Security-Policy response header. The directives below are
+         the ones that only work via meta tag (per spec, frame-ancestors /
+         report-uri / sandbox from meta are ignored) AND that don't
+         restrict anything the CF header already allows, so there's no
+         risk of intersection breaking the site. They matter when the
+         app is loaded outside the CF edge (local preview, service-worker
+         offline) where no response header is present. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="upgrade-insecure-requests; base-uri 'self'; form-action 'self'; object-src 'none';"
+    />
     <title>משמרת — ניהול משמרות חכם</title>
     <link rel="icon" type="image/png" href="logo-favicon.png" />
     <link rel="shortcut icon" type="image/png" href="logo-favicon.png" />
