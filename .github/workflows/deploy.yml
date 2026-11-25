@@ -1,13 +1,11 @@
 name: Test and deploy to GitHub Pages
 
-# Single-job workflow: tests and deploy share one runner so there is no
-# cross-job artifact handoff (the two-job variant hit a race between
-# upload-pages-artifact@v3 and deploy-pages@v4 where the deploy could not
-# find the artifact the previous step had just uploaded).
+# Single-job workflow: tests and deploy share one runner. The deploy step
+# only runs if every browser project in the Playwright suite passes.
 #
-# Order: checkout → install → playwright → tests → upload → deploy.
-# If the test step fails, every later step is skipped and GitHub Pages
-# keeps serving the previous good deploy.
+# Flow: checkout → install → playwright → vite build → tests on dist/ →
+# upload dist/ → deploy. If anything fails, Pages keeps serving the
+# previous good deploy.
 
 on:
   push:
@@ -44,10 +42,17 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
 
-      - name: Run smoke tests
+      - name: Build with Vite
+        run: npm run build
+
+      # Run the Playwright suite against the BUILT dist/, not the source.
+      # The playwright.config.js webServer serves dist/ when VITE_SERVE_DIST=1
+      # is set below.
+      - name: Run smoke tests against dist/
         run: npm test
         env:
           CI: '1'
+          VITE_SERVE_DIST: '1'
 
       - name: Upload Playwright report on failure
         if: failure()
@@ -57,25 +62,13 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-      # Pages artifact must NOT include node_modules / playwright caches / the
-      # tests folder itself — those bloat the artifact and are not needed at
-      # runtime. Copy only the files the live site actually serves.
-      - name: Stage artifact contents
-        run: |
-          mkdir -p _site
-          cp -r index.html privacy.html styles.css sw.js manifest.json js/ \
-                CNAME *.png _site/
-          echo "Artifact contents:" && ls -la _site/
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: dist
 
-      # deploy-pages keeps hitting a window where the artifact-metadata query
-      # returns 0 even though the upload step reported success. Sleep briefly
-      # to let the backend index the upload, then let deploy-pages retry
-      # internally via its own `error_count` default.
+      # deploy-pages keeps racing upload-pages-artifact — sleep briefly so the
+      # artifact finishes indexing before the deploy query runs.
       - name: Wait for artifact to propagate
         run: sleep 20
 

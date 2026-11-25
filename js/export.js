@@ -23,7 +23,14 @@
 // Parse a note into tags and free text
 "use strict";
 
-function _parseNote(rawNote) {
+import { S } from './state.js';
+import { sb } from './sb.js';
+import { DAYS, SHIFTS, getShiftsForDate } from './constants.js';
+import { getEmp } from './memo.js';
+import { getWeekDates, toast } from './utils.js';
+import { getActiveProfile } from './roles.js';
+import { fmtDate } from './helpers.js';
+export function _parseNote(rawNote) {
   if (!rawNote) return { tags: [], text: "" };
   if (rawNote.startsWith("🏷️ ")) {
     const parts = rawNote.split(" | ");
@@ -35,7 +42,7 @@ function _parseNote(rawNote) {
 }
 
 // Load schedule data (current week's live state, or fetch from DB for any other week)
-async function loadWeekDataForExport(offset, weekStart) {
+export async function loadWeekDataForExport(offset, weekStart) {
   let scheduleData = S.schedule;
   let notesData = S.assignmentNotes;
   let hoursData = S.customHours;
@@ -65,7 +72,7 @@ async function loadWeekDataForExport(offset, weekStart) {
 // Build just the inner content (no <html>/<head>/<body>) of the schedule table —
 // reused for both the printable PDF document and the WhatsApp image export.
 // Escape user-controlled text before inserting into an HTML string (prevents XSS in exports).
-function escHtml(s) {
+export function escHtml(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -74,7 +81,7 @@ function escHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
-function buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursData, weekLabel) {
+export function buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursData, weekLabel) {
   let html = `<div id="wa-export-root" style="font-family:Heebo,Arial,sans-serif;direction:rtl;padding:20px;color:#1a1a2e;background:white;width:fit-content;">
 <style>
   #wa-export-root h1{font-weight:900;font-size:22px;margin-bottom:4px}
@@ -150,31 +157,31 @@ function buildScheduleTableInnerHTML(wd, scheduleData, notesData, hoursData, wee
 // Works with iPhone Calendar, Google Calendar, Outlook — any calendar app.
 // Morning has two variants (בוקר / בוקר ב׳) that overlap in time — for "who's with me"
 // purposes they should be treated as the same group, not separate shifts.
-function _shiftGroupIds(shiftId) {
+export function _shiftGroupIds(shiftId) {
   return (shiftId === "morning" || shiftId === "morning2") ? ["morning", "morning2"] : [shiftId];
 }
-function _dateShift(dateStr, delta) {
+export function _dateShift(dateStr, delta) {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + delta);
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
 // Chronological shift order per day: night(D-1) -> morning(D) -> afternoon(D) -> night(D) -> morning(D+1)...
 // "Who I'm replacing" = whoever worked the shift immediately before mine in that chain.
-function _handoverBefore(shiftId, date) {
+export function _handoverBefore(shiftId, date) {
   if (shiftId === "morning" || shiftId === "morning2") return { date: _dateShift(date, -1), ids: ["night"] };
   if (shiftId === "afternoon") return { date, ids: ["morning", "morning2"] };
   if (shiftId === "night") return { date, ids: ["afternoon"] };
   return null;
 }
 // "Who replaces me" = whoever works the shift immediately after mine in that chain.
-function _handoverAfter(shiftId, date) {
+export function _handoverAfter(shiftId, date) {
   if (shiftId === "morning" || shiftId === "morning2") return { date, ids: ["afternoon"] };
   if (shiftId === "afternoon") return { date, ids: ["night"] };
   if (shiftId === "night") return { date: _dateShift(date, 1), ids: ["morning", "morning2"] };
   return null;
 }
 
-async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
+export async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
   const offset = weekOffsetParam != null ? weekOffsetParam : S.weekOffset;
   const wd = getWeekDates(offset);
   const targetEmp = getEmp(empId) || getActiveProfile();
@@ -328,7 +335,7 @@ async function exportMyShiftsToCalendar(empId, weekOffsetParam) {
   }
 }
 
-function _downloadICS(blob, fileName) {
+export function _downloadICS(blob, fileName) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -340,7 +347,7 @@ function _downloadICS(blob, fileName) {
   toast("📅 קובץ היומן הורד — פתח אותו כדי להוסיף ליומן");
 }
 
-async function exportSchedulePDF(weekOffsetParam) {
+export async function exportSchedulePDF(weekOffsetParam) {
   const offset = weekOffsetParam != null ? weekOffsetParam : S.weekOffset;
   const wd = getWeekDates(offset);
   const weekStart = wd[0];
@@ -406,7 +413,7 @@ ${innerHtml}
 }
 
 // Lazy-load html2canvas only when actually needed (keeps initial page load light)
-function _ensureHtml2Canvas() {
+export function _ensureHtml2Canvas() {
   return new Promise((resolve, reject) => {
     if (window.html2canvas) { resolve(); return; }
     const s = document.createElement("script");
@@ -421,7 +428,7 @@ function _ensureHtml2Canvas() {
   });
 }
 
-async function exportScheduleWhatsApp(weekOffsetParam) {
+export async function exportScheduleWhatsApp(weekOffsetParam) {
   const offset = weekOffsetParam != null ? weekOffsetParam : S.weekOffset;
   const wd = getWeekDates(offset);
   const weekStart = wd[0];
@@ -492,7 +499,7 @@ async function exportScheduleWhatsApp(weekOffsetParam) {
   toast("📥 התמונה הורדה — צרף אותה ידנית בוואטסאפ", "ok");
 }
 
-async function exportScheduleCSV(weekOffsetParam) {
+export async function exportScheduleCSV(weekOffsetParam) {
   const offset = weekOffsetParam != null ? weekOffsetParam : S.weekOffset;
   const wd = getWeekDates(offset);
   const weekStart = wd[0];

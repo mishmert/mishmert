@@ -52,13 +52,16 @@ module.exports = defineConfig({
     },
   ],
 
-  // Serve the repo root over http for the local test runs. Keep it simple: a
-  // Python one-shot. In CI this is replaced by `npx serve dist` once the build
-  // step exists again.
+  // Serve the right directory for the test run:
+  //  - TEST_URL set           → run against a remote URL, no local server.
+  //  - VITE_SERVE_DIST=1      → serve the Vite-built dist/ (CI after build).
+  //  - otherwise               → serve the repo root (local source dev).
   webServer: process.env.TEST_URL
     ? undefined
     : {
-        command: 'python3 -m http.server 4173',
+        command: process.env.VITE_SERVE_DIST
+          ? 'python3 -m http.server --directory dist 4173'
+          : 'python3 -m http.server 4173',
         port: 4173,
         timeout: 10_000,
         reuseExistingServer: !process.env.CI,

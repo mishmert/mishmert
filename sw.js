@@ -1,9 +1,10 @@
-// Service worker v17 — NUCLEAR RESET
-// Wipes every cache on install (not just the previous named one), which fixes
-// clients stuck on a cache name they don't recognize. Takes over all open
-// windows immediately via skipWaiting + clients.claim.
+// Service worker v18 — Vite-bundled build.
+// Pre-cache only the shell (/, /index.html, /manifest.json); the hashed
+// JS/CSS bundles are learned on first fetch by the network-first handler,
+// which means a fresh deploy always reaches the browser on next load even
+// though the filename changed.
 
-const CACHE = "meshmeret-v17";
+const CACHE = "meshmeret-v18";
 const ASSETS = [
   "/",
   "/index.html",
@@ -11,12 +12,11 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", e => {
-  // Wipe EVERY existing cache before (re-)populating ours.
   e.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
     const cache = await caches.open(CACHE);
-    try { await cache.addAll(ASSETS); } catch (err) { /* best effort */ }
+    try { await cache.addAll(ASSETS); } catch (_) {}
   })());
   self.skipWaiting();
 });
@@ -26,7 +26,6 @@ self.addEventListener("activate", e => {
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
     await self.clients.claim();
-    // Force every open client to reload so they get the fresh HTML.
     const clients = await self.clients.matchAll({ type: "window" });
     for (const c of clients) {
       try { c.navigate(c.url); } catch (_) {}
@@ -36,7 +35,7 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  // Network-first so users always get the latest app, with cache fallback when offline
+  // Network-first so a deploy wins over any stale cache.
   e.respondWith(
     fetch(e.request)
       .then(resp => {

@@ -21,7 +21,17 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-async function runSmartSchedule() {
+import { S } from './state.js';
+import { pushScheduleHistory } from './history.js';
+import { loadAvailSubmissions } from './data.js';
+import { getWeekDates, toast } from './utils.js';
+import { sb } from './sb.js';
+import { schedulableEmployees } from './helpers.js';
+import { DAYS, SHIFTS, runRules } from './constants.js';
+import { getBlockingVacation } from './actions.js';
+import { _saveTimer, logAction } from './audit.js';
+import { render } from './main.js';
+export async function runSmartSchedule() {
   // Backup current schedule for undo
   S.scheduleBackup = {
     weekOffset: S.weekOffset,

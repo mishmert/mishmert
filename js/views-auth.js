@@ -20,7 +20,13 @@
 // ── LOADING ──
 "use strict";
 
-function viewLoading() {
+import { div, e, skeleton, skeletonCard, skeletonSchedule, toast, uiAlert, uiPrompt } from './utils.js';
+import { S } from './state.js';
+import { handleAcceptInvitation, handleLogin, handleRegister } from './audit.js';
+import { sb } from './sb.js';
+import { render } from './main.js';
+import { loadAll } from './data.js';
+export function viewLoading() {
   const wrap = e("div",{style:"padding:20px;max-width:900px;margin:0 auto"});
   // Header skeleton
   wrap.appendChild(e("div",{style:"display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"}, [
@@ -39,7 +45,7 @@ function viewLoading() {
 }
 
 // ── LOGIN ──
-function viewLogin() {
+export function viewLogin() {
   const isReg = S.loginMode === "register" && !!S.pendingBizInvite;
   const isInvite = S.loginMode === "accept_invitation";
   const wrap = e("div",{class:"login-wrap"});
@@ -155,7 +161,7 @@ function viewLogin() {
 }
 
 // ═══ 2FA ENROLLMENT — one-time TOTP setup ═══
-function viewMfaEnroll() {
+export function viewMfaEnroll() {
   const wrap = div("app");
   const box = e("div",{style:"max-width:440px;margin:0 auto;padding:40px 24px"});
 
@@ -267,7 +273,7 @@ function viewMfaEnroll() {
 }
 
 // ═══ 2FA CHALLENGE — enter TOTP on login ═══
-function viewMfaChallenge() {
+export function viewMfaChallenge() {
   const wrap = div("app");
   const box = e("div",{style:"max-width:420px;margin:0 auto;padding:40px 24px"});
 
@@ -328,7 +334,7 @@ function viewMfaChallenge() {
   return wrap;
 }
 
-function loginField(lbl, name, type, ph, req=false) {
+export function loginField(lbl, name, type, ph, req=false) {
   // Map to standard autocomplete tokens so iOS Keychain / 1Password / Chrome offer the
   // right suggestion in the right field. Without these hints browsers guess and often miss.
   let ac = null;
