@@ -34,6 +34,7 @@ import { sb } from "./sb.js";
 import { checkAutoReminder, isUserBusy, render, startAutoRefresh } from "./main.js";
 import { fmtYMD, friendlyError, getWeekDates, shiftDurationHours, toast } from "./utils.js";
 import {
+  DAY_SHIFT_OVERRIDES,
   SHIFTS,
   SHIFT_BY_ID,
   SHIFT_LABELS,
@@ -140,6 +141,9 @@ export async function loadAll(user) {
     SHIFTS[3].start = savedHours.night.start;
     SHIFTS[3].end = savedHours.night.end;
   }
+  // Legacy weMorning/weNight: historically applied to Saturday only (via the
+  // WEEKEND_SHIFTS alias). Keep that behavior, but let the newer per-day keys
+  // below override it if the admin has set them explicitly.
   if (savedHours.weMorning?.start) {
     WEEKEND_SHIFTS[0].start = savedHours.weMorning.start;
     WEEKEND_SHIFTS[0].end = savedHours.weMorning.end;
@@ -147,6 +151,30 @@ export async function loadAll(user) {
   if (savedHours.weNight?.start) {
     WEEKEND_SHIFTS[1].start = savedHours.weNight.start;
     WEEKEND_SHIFTS[1].end = savedHours.weNight.end;
+  }
+  // New per-day keys — let the settings UI actually affect Fri + Thursday night,
+  // not just Saturday. Each updates the live DAY_SHIFT_OVERRIDES entry so every
+  // consumer (getShiftsForDate, direct DAY_SHIFT_OVERRIDES lookups in views-main)
+  // sees the admin's choice.
+  if (savedHours.thuNight?.start) {
+    DAY_SHIFT_OVERRIDES[4][0].start = savedHours.thuNight.start;
+    DAY_SHIFT_OVERRIDES[4][0].end = savedHours.thuNight.end;
+  }
+  if (savedHours.friMorning?.start) {
+    DAY_SHIFT_OVERRIDES[5][0].start = savedHours.friMorning.start;
+    DAY_SHIFT_OVERRIDES[5][0].end = savedHours.friMorning.end;
+  }
+  if (savedHours.friNight?.start) {
+    DAY_SHIFT_OVERRIDES[5][1].start = savedHours.friNight.start;
+    DAY_SHIFT_OVERRIDES[5][1].end = savedHours.friNight.end;
+  }
+  if (savedHours.satMorning?.start) {
+    DAY_SHIFT_OVERRIDES[6][0].start = savedHours.satMorning.start;
+    DAY_SHIFT_OVERRIDES[6][0].end = savedHours.satMorning.end;
+  }
+  if (savedHours.satNight?.start) {
+    DAY_SHIFT_OVERRIDES[6][1].start = savedHours.satNight.start;
+    DAY_SHIFT_OVERRIDES[6][1].end = savedHours.satNight.end;
   }
 
   // Per-business shift TYPE selection (which shift types exist, and which apply on Fri/Sat).

@@ -44,6 +44,7 @@ import { isManager } from "./roles.js";
 import { getEmp } from "./memo.js";
 import {
   BLOCK_SHIFTS,
+  DAY_SHIFT_OVERRIDES,
   DAYS,
   SHIFTS,
   SHIFT_BY_ID,
@@ -419,21 +420,21 @@ export function viewSettings() {
         SHIFTS[3].start = sd.nightStart;
         SHIFTS[3].end = sd.nightEnd;
       }
-      if (sd.weMorningStart && sd.weMorningEnd) {
-        WEEKEND_SHIFTS[0].start = sd.weMorningStart;
-        WEEKEND_SHIFTS[0].end = sd.weMorningEnd;
-      }
-      if (sd.weNightStart && sd.weNightEnd) {
-        WEEKEND_SHIFTS[1].start = sd.weNightStart;
-        WEEKEND_SHIFTS[1].end = sd.weNightEnd;
-      }
-
-      // Persist to DB so it survives refresh + other managers see it
+      // Persist to DB so it survives refresh + other managers see it.
+      // Include the per-day weekend / Thu-night keys read from the live
+      // DAY_SHIFT_OVERRIDES so hitting "שמור שעות" on the weekday card
+      // doesn't wipe the weekend values the other card persists.
       const shiftHours = {
         morning: { start: SHIFTS[0].start, end: SHIFTS[0].end },
         morning2: { start: SHIFTS[1].start, end: SHIFTS[1].end },
         afternoon: { start: SHIFTS[2].start, end: SHIFTS[2].end },
         night: { start: SHIFTS[3].start, end: SHIFTS[3].end },
+        thuNight: { start: DAY_SHIFT_OVERRIDES[4][0].start, end: DAY_SHIFT_OVERRIDES[4][0].end },
+        friMorning: { start: DAY_SHIFT_OVERRIDES[5][0].start, end: DAY_SHIFT_OVERRIDES[5][0].end },
+        friNight: { start: DAY_SHIFT_OVERRIDES[5][1].start, end: DAY_SHIFT_OVERRIDES[5][1].end },
+        satMorning: { start: DAY_SHIFT_OVERRIDES[6][0].start, end: DAY_SHIFT_OVERRIDES[6][0].end },
+        satNight: { start: DAY_SHIFT_OVERRIDES[6][1].start, end: DAY_SHIFT_OVERRIDES[6][1].end },
+        // Legacy — mirror Saturday for pre-2026-11-25 clients.
         weMorning: { start: WEEKEND_SHIFTS[0].start, end: WEEKEND_SHIFTS[0].end },
         weNight: { start: WEEKEND_SHIFTS[1].start, end: WEEKEND_SHIFTS[1].end },
       };
@@ -453,108 +454,132 @@ export function viewSettings() {
   );
   wrap.appendChild(shiftCard);
 
-  // Weekend shift hours
-  const weCard = div("card", [e("div", { class: "card-title" }, "🕐 שעות שישי — שבת")]);
+  // Weekend + Thursday-night shift hours.
+  //
+  // The schedule view reads these hours from DAY_SHIFT_OVERRIDES at render time
+  // (per-day: Thu=4, Fri=5, Sat=6). loadAll() in data.js populates those entries
+  // from the business row's shift_hours JSON keys:
+  //   thuNight, friMorning, friNight, satMorning, satNight
+  // Legacy weMorning / weNight still apply to Saturday for back-compat; the
+  // new per-day keys here override them.
+  const weCard = div("card", [
+    e("div", { class: "card-title" }, "🕐 שעות חמישי לילה · שישי · שבת"),
+  ]);
   weCard.appendChild(
     e(
       "div",
       { style: "font-size:12px;color:#64748B;margin-bottom:12px" },
-      "בסופ״ש יש רק 2 משמרות: בוקר ולילה"
+      "חמישי יש רק משמרת לילה מיוחדת. בשישי+שבת יש רק 2 משמרות: בוקר ולילה."
     )
   );
-  if (!sd.weMorningStart) sd.weMorningStart = WEEKEND_SHIFTS[0].start;
-  if (!sd.weMorningEnd) sd.weMorningEnd = WEEKEND_SHIFTS[0].end;
-  if (!sd.weNightStart) sd.weNightStart = WEEKEND_SHIFTS[1].start;
-  if (!sd.weNightEnd) sd.weNightEnd = WEEKEND_SHIFTS[1].end;
+
+  // Seed the local form state once from the current in-memory DAY_SHIFT_OVERRIDES
+  // (which loadAll already populated from DB).
+  const seed = (k, v) => {
+    if (sd[k] == null) sd[k] = v;
+  };
+  seed("thuNightStart", DAY_SHIFT_OVERRIDES[4][0].start);
+  seed("thuNightEnd", DAY_SHIFT_OVERRIDES[4][0].end);
+  seed("friMorningStart", DAY_SHIFT_OVERRIDES[5][0].start);
+  seed("friMorningEnd", DAY_SHIFT_OVERRIDES[5][0].end);
+  seed("friNightStart", DAY_SHIFT_OVERRIDES[5][1].start);
+  seed("friNightEnd", DAY_SHIFT_OVERRIDES[5][1].end);
+  seed("satMorningStart", DAY_SHIFT_OVERRIDES[6][0].start);
+  seed("satMorningEnd", DAY_SHIFT_OVERRIDES[6][0].end);
+  seed("satNightStart", DAY_SHIFT_OVERRIDES[6][1].start);
+  seed("satNightEnd", DAY_SHIFT_OVERRIDES[6][1].end);
+
+  // Helper: renders a single "label · from · to" row and wires its inputs to `sd`.
+  function timeRow(label, color, startKey, endKey) {
+    return e(
+      "div",
+      {
+        style:
+          "display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#0F172A;border-radius:10px;padding:8px 12px;border:1px solid " +
+          color +
+          "33",
+      },
+      [
+        e(
+          "div",
+          { style: "font-weight:700;font-size:12px;color:" + color + ";min-width:85px" },
+          label
+        ),
+        e("div", { style: "flex:1;display:flex;flex-direction:column;gap:2px" }, [
+          e("div", { style: "font-size:10px;color:#64748B;text-align:center" }, "מ־"),
+          e("input", {
+            type: "time",
+            value: sd[startKey],
+            class: "fi",
+            style: "padding:8px 10px;font-size:14px;text-align:center",
+            onchange: (ev) => {
+              sd[startKey] = ev.target.value;
+            },
+          }),
+        ]),
+        e("div", { style: "flex:1;display:flex;flex-direction:column;gap:2px" }, [
+          e("div", { style: "font-size:10px;color:#64748B;text-align:center" }, "עד"),
+          e("input", {
+            type: "time",
+            value: sd[endKey],
+            class: "fi",
+            style: "padding:8px 10px;font-size:14px;text-align:center",
+            onchange: (ev) => {
+              sd[endKey] = ev.target.value;
+            },
+          }),
+        ]),
+      ]
+    );
+  }
+
+  weCard.appendChild(timeRow("חמישי לילה", "#6366F1", "thuNightStart", "thuNightEnd"));
+  weCard.appendChild(timeRow("שישי בוקר", "#F59E0B", "friMorningStart", "friMorningEnd"));
+  weCard.appendChild(timeRow("שישי לילה", "#6366F1", "friNightStart", "friNightEnd"));
+  weCard.appendChild(timeRow("שבת בוקר", "#F59E0B", "satMorningStart", "satMorningEnd"));
+  weCard.appendChild(timeRow("שבת לילה", "#6366F1", "satNightStart", "satNightEnd"));
 
   weCard.appendChild(
-    e(
-      "div",
-      {
-        style:
-          "display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#0F172A;border-radius:10px;padding:8px 12px;border:1px solid #F59E0B33",
-      },
-      [
-        e("div", { style: "font-weight:700;font-size:12px;color:#F59E0B;min-width:55px" }, "בוקר"),
-        e("div", { style: "flex:1;display:flex;flex-direction:column;gap:2px" }, [
-          e("div", { style: "font-size:10px;color:#64748B;text-align:center" }, "מ־"),
-          e("input", {
-            type: "time",
-            value: sd.weMorningStart,
-            class: "fi",
-            style: "padding:8px 10px;font-size:14px;text-align:center",
-            onchange: (ev) => {
-              sd.weMorningStart = ev.target.value;
-            },
-          }),
-        ]),
-        e("div", { style: "flex:1;display:flex;flex-direction:column;gap:2px" }, [
-          e("div", { style: "font-size:10px;color:#64748B;text-align:center" }, "עד"),
-          e("input", {
-            type: "time",
-            value: sd.weMorningEnd,
-            class: "fi",
-            style: "padding:8px 10px;font-size:14px;text-align:center",
-            onchange: (ev) => {
-              sd.weMorningEnd = ev.target.value;
-            },
-          }),
-        ]),
-      ]
-    )
-  );
-  weCard.appendChild(
-    e(
-      "div",
-      {
-        style:
-          "display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#0F172A;border-radius:10px;padding:8px 12px;border:1px solid #6366F133",
-      },
-      [
-        e("div", { style: "font-weight:700;font-size:12px;color:#6366F1;min-width:55px" }, "לילה"),
-        e("div", { style: "flex:1;display:flex;flex-direction:column;gap:2px" }, [
-          e("div", { style: "font-size:10px;color:#64748B;text-align:center" }, "מ־"),
-          e("input", {
-            type: "time",
-            value: sd.weNightStart,
-            class: "fi",
-            style: "padding:8px 10px;font-size:14px;text-align:center",
-            onchange: (ev) => {
-              sd.weNightStart = ev.target.value;
-            },
-          }),
-        ]),
-        e("div", { style: "flex:1;display:flex;flex-direction:column;gap:2px" }, [
-          e("div", { style: "font-size:10px;color:#64748B;text-align:center" }, "עד"),
-          e("input", {
-            type: "time",
-            value: sd.weNightEnd,
-            class: "fi",
-            style: "padding:8px 10px;font-size:14px;text-align:center",
-            onchange: (ev) => {
-              sd.weNightEnd = ev.target.value;
-            },
-          }),
-        ]),
-      ]
-    )
-  );
-  weCard.appendChild(
     btn("btn-add", "שמור שעות סופ״ש", async () => {
-      if (sd.weMorningStart && sd.weMorningEnd) {
-        WEEKEND_SHIFTS[0].start = sd.weMorningStart;
-        WEEKEND_SHIFTS[0].end = sd.weMorningEnd;
+      // Apply to the live DAY_SHIFT_OVERRIDES so the UI reflects the change
+      // immediately, without waiting for a reload.
+      if (sd.thuNightStart && sd.thuNightEnd) {
+        DAY_SHIFT_OVERRIDES[4][0].start = sd.thuNightStart;
+        DAY_SHIFT_OVERRIDES[4][0].end = sd.thuNightEnd;
       }
-      if (sd.weNightStart && sd.weNightEnd) {
-        WEEKEND_SHIFTS[1].start = sd.weNightStart;
-        WEEKEND_SHIFTS[1].end = sd.weNightEnd;
+      if (sd.friMorningStart && sd.friMorningEnd) {
+        DAY_SHIFT_OVERRIDES[5][0].start = sd.friMorningStart;
+        DAY_SHIFT_OVERRIDES[5][0].end = sd.friMorningEnd;
       }
-      // Persist all shift hours together
+      if (sd.friNightStart && sd.friNightEnd) {
+        DAY_SHIFT_OVERRIDES[5][1].start = sd.friNightStart;
+        DAY_SHIFT_OVERRIDES[5][1].end = sd.friNightEnd;
+      }
+      if (sd.satMorningStart && sd.satMorningEnd) {
+        DAY_SHIFT_OVERRIDES[6][0].start = sd.satMorningStart;
+        DAY_SHIFT_OVERRIDES[6][0].end = sd.satMorningEnd;
+        // Keep the WEEKEND_SHIFTS alias fresh (it IS DAY_SHIFT_OVERRIDES[6], but
+        // some consumers also read sd.weMorning* — mirror for safety).
+      }
+      if (sd.satNightStart && sd.satNightEnd) {
+        DAY_SHIFT_OVERRIDES[6][1].start = sd.satNightStart;
+        DAY_SHIFT_OVERRIDES[6][1].end = sd.satNightEnd;
+      }
+
+      // Persist all shift hours together. The per-day keys are the new source
+      // of truth; legacy weMorning / weNight are mirrored from Saturday so an
+      // older build loading this row still sees sensible values.
       const shiftHours = {
         morning: { start: SHIFTS[0].start, end: SHIFTS[0].end },
         morning2: { start: SHIFTS[1].start, end: SHIFTS[1].end },
         afternoon: { start: SHIFTS[2].start, end: SHIFTS[2].end },
         night: { start: SHIFTS[3].start, end: SHIFTS[3].end },
+        thuNight: { start: DAY_SHIFT_OVERRIDES[4][0].start, end: DAY_SHIFT_OVERRIDES[4][0].end },
+        friMorning: { start: DAY_SHIFT_OVERRIDES[5][0].start, end: DAY_SHIFT_OVERRIDES[5][0].end },
+        friNight: { start: DAY_SHIFT_OVERRIDES[5][1].start, end: DAY_SHIFT_OVERRIDES[5][1].end },
+        satMorning: { start: DAY_SHIFT_OVERRIDES[6][0].start, end: DAY_SHIFT_OVERRIDES[6][0].end },
+        satNight: { start: DAY_SHIFT_OVERRIDES[6][1].start, end: DAY_SHIFT_OVERRIDES[6][1].end },
+        // Legacy — always mirror Saturday so pre-2026-11-25 clients keep working.
         weMorning: { start: WEEKEND_SHIFTS[0].start, end: WEEKEND_SHIFTS[0].end },
         weNight: { start: WEEKEND_SHIFTS[1].start, end: WEEKEND_SHIFTS[1].end },
       };
