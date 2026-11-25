@@ -109,16 +109,19 @@ test.describe('page load', () => {
 test.describe('app globals', () => {
   test('supabase client (sb) is created and reachable', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
-    // sb is initialized at the top of the inline script. If supabase-js
-    // failed to load from the CDN, sb would be undefined and the whole app
-    // would fail. Classic scripts expose top-level `const` by name in the
-    // global scope (not on `window`), so we check through eval.
+    await page.waitForTimeout(1500);
+    // Try both the classic-script path (global `sb` identifier) and the
+    // module-build path (where sb.js must explicitly set window.sb).
     const sbExists = await page.evaluate(() => {
-      try { return typeof sb !== 'undefined' && typeof sb.auth === 'object'; }
-      catch (_) { return false; }
+      try {
+        if (typeof globalThis.sb !== 'undefined' && globalThis.sb.auth) return true;
+        if (window.sb && window.sb.auth) return true;
+        // Final fallback: try to evaluate the identifier in global scope.
+        try { return typeof sb !== 'undefined' && typeof sb.auth === 'object'; }
+        catch (_) { return false; }
+      } catch (_) { return false; }
     });
-    expect(sbExists, 'sb client not created — supabase-js CDN probably failed').toBe(true);
+    expect(sbExists, 'sb client not created — supabase-js CDN probably failed, or sb.js did not run').toBe(true);
   });
 
   test('S state object is initialized and exposed as window.S', async ({ page }) => {
@@ -136,7 +139,16 @@ test.describe('app globals', () => {
     expect(shape.hasSchedule).toBe(true);
   });
 
-  test('key helpers are callable in the global scope', async ({ page }) => {
+  test('key helpers are callable (classic-script globals only)', async ({ page }) => {
+    // This check only makes sense when the app ships as classic scripts that
+    // expose top-level names into the shared global scope. The Vite-bundled
+    // module build puts everything inside the module's own closure, so these
+    // names aren't globals anymore (sb / render / etc. are reachable through
+    // window.S or window.sb only when state.js / sb.js explicitly expose them).
+    const html = await (await page.request.get('/')).text();
+    const isModule = /<script[^>]*type="module"[^>]*src="/.test(html);
+    test.skip(isModule, 'module build hides helpers inside the bundle — check through window.S / window.sb instead');
+
     await page.goto('/');
     await page.waitForTimeout(1000);
     const helpersDefined = await page.evaluate(() => {
@@ -241,27 +253,37 @@ test.describe('service worker', () => {
 //  ASSET INTEGRITY
 // ──────────────────────────────────────────────────────────────────────────
 test.describe('asset integrity', () => {
-  test('every js/*.js file referenced by index.html returns 200 and parses', async ({ page, request }) => {
-    // Use the HTTP layer directly, not the page — SW registration can trigger
-    // a navigation that invalidates the page's execution context mid-test.
+  test('every local script referenced by index.html returns real JS', async ({ request }) => {
     const indexResp = await request.get('/');
     expect(indexResp.status()).toBe(200);
     const html = await indexResp.text();
-    // Extract every <script src="js/..."> URL from the raw HTML.
-    const srcRegex = /<script\s+src="(js\/[^"]+)"/g;
-    const scriptPaths = [];
+
+    // Detect every local <script src="..."> (either classic js/*.js files or
+    // a Vite-bundled assets/app-HASH.js). External CDN scripts are skipped.
+    const srcRegex = /<script[^>]*src="([^"]+)"/g;
+    const paths = [];
     let m;
-    while ((m = srcRegex.exec(html)) !== null) scriptPaths.push(m[1]);
-    expect(scriptPaths.length, 'index.html has no js/*.js references at all').toBeGreaterThan(0);
-    for (const relPath of scriptPaths) {
+    while ((m = srcRegex.exec(html)) !== null) {
+      const src = m[1];
+      if (src.startsWith('http://') || src.startsWith('https://')) continue; // external CDN
+      paths.push(src.replace(/^\//, ''));
+    }
+    expect(paths.length, 'no local <script src> tags found in index.html').toBeGreaterThan(0);
+
+    // Determine whether this is the classic (multi-script) or bundled (type="module") layout.
+    const isModule = /<script[^>]*type="module"[^>]*src="/.test(html);
+
+    for (const relPath of paths) {
       const resp = await request.get('/' + relPath);
       expect(resp.status(), `/${relPath} did not return 200`).toBe(200);
       const body = await resp.text();
-      // A JS file shouldn't be served as the 404 HTML page.
+      // Not accidentally serving the 404 HTML page as JS.
       expect(body.trim().startsWith('<'), `/${relPath} looks like HTML, not JS (404 page?)`).toBe(false);
-      // No stray `import`/`export` at top level — catches yesterday's
-      // ES-Modules regression at the SOURCE FILE level.
-      expect(/^import\s+\{/m.test(body), `/${relPath} contains top-level 'import { ... }' — ES module leaked into classic script context`).toBe(false);
+      // Only enforce "no top-level import" in CLASSIC mode. In the
+      // module/bundle mode, imports are legal.
+      if (!isModule) {
+        expect(/^import\s+\{/m.test(body), `/${relPath} has top-level 'import { ... }' but is loaded as a classic script`).toBe(false);
+      }
     }
   });
 
