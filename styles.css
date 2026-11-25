@@ -480,12 +480,15 @@ textarea:focus {
     0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   transform: translateY(-1px);
 }
-/* Narrow desktop (tablet-landscape / small laptop): managers have 11 nav
-   tabs that don't fit between 769px and 1199px. Rather than hide them
-   behind an invisible horizontal scroll, we collapse each tab to its icon
-   and surface the Hebrew label as a hover tooltip (title attr). Mobile
-   (<=768px) already switches to the bottom nav, so no change needed there. */
-@media (min-width: 769px) and (max-width: 1199px) {
+/* Narrow desktop (tablet-landscape through typical 14"/15" laptops):
+   managers have 11 nav tabs. With a logo (~150px) and the user-area chip
+   (~280px), each tab needs ~95px to show its label, so the nav only fits
+   its full width at ~1500px+. Below that we collapse each tab to its
+   icon and surface the Hebrew label via title= tooltip. Mobile (<=768px)
+   already uses the bottom nav. The breakpoint 1499px covers common
+   laptop resolutions 1366/1440/1470 where the labels used to overflow
+   silently behind a scrollbar-less overflow:auto. */
+@media (min-width: 769px) and (max-width: 1499px) {
   .nav {
     gap: 2px;
   }
