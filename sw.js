@@ -4,7 +4,7 @@
 // which means a fresh deploy always reaches the browser on next load even
 // though the filename changed.
 
-const CACHE = "meshmeret-v19";
+const CACHE = "meshmeret-v20";
 const ASSETS = [
   "/",
   "/index.html",

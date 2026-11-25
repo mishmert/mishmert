@@ -31,7 +31,7 @@
 
 import { S } from './state.js';
 import { _blockPresetBase, empIdx, filterNavByFeatures, fmtDate, getNotifiedManagers, getTimeBasedGreeting, isFeatureEnabled, schedulableEmployees } from './helpers.js';
-import { btn, div, friendlyError, getMonthInfo, getWeekDates, haptic, israelNow, israelTodayIso, israelYear, skeletonSchedule, toast, today, uiConfirm, uiPrompt } from './utils.js';
+import { btn, div, e, friendlyError, getMonthInfo, getWeekDates, haptic, israelNow, israelTodayIso, israelYear, skeletonSchedule, toast, today, uiConfirm, uiPrompt } from './utils.js';
 import { render, silentRefresh } from './main.js';
 import { handleLogout, logAction, saveScheduleToDB, sendEmail } from './audit.js';
 import { BLOCK_SHIFTS, DAYS, DAY_SHIFT_OVERRIDES, SHIFTS, SHIFT_BY_ID, WEEKEND_SHIFTS, ec, getHoliday, getShiftsForDate } from './constants.js';

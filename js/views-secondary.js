@@ -22,7 +22,7 @@
 // ══════════════════════════════════════════════════════
 "use strict";
 
-import { btn, div, fmtYMD, friendlyError, getWeekDates, israelNow, skeletonCard, skeletonSchedule, toast, today, uiConfirm, validatePassword } from './utils.js';
+import { btn, div, e, fmtYMD, friendlyError, getWeekDates, israelNow, skeletonCard, skeletonSchedule, toast, today, uiConfirm, validatePassword } from './utils.js';
 import { S } from './state.js';
 import { sb } from './sb.js';
 import { render } from './main.js';

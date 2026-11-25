@@ -26,7 +26,7 @@
 // ══════════════════════════════════════════════════════
 import { S, persistAvailDraft, persistOfflineCache } from './state.js';
 import { loadAvailSubmissions, loadEmployees, loadJoinRequests, loadSchedule, loadSwapRequests, loadVacations } from './data.js';
-import { $, _closeDialog, div, getWeekDates, israelNow, toast } from './utils.js';
+import { $, _closeDialog, div, e, getWeekDates, israelNow, toast } from './utils.js';
 import { viewLoading, viewLogin, viewMfaChallenge, viewMfaEnroll } from './views-auth.js';
 import { checkAuth, viewPasswordReset } from './router.js';
 import { viewConstraintsModal, viewEmpView, viewEmployees, viewExportModal, viewHeader, viewHome, viewPreviewSelectModal, viewPublishModal, viewSchedule, viewSwaps, viewVacations } from './views-main.js';

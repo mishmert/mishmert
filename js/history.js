@@ -148,6 +148,7 @@ export async function restoreSnapshot(snapshot) {
   
   // Invalidate caches
   if (typeof invalidateSwapCache === "function") invalidateSwapCache();
+  // eslint-disable-next-line no-undef
   if (typeof invalidateMonthCache === "function") invalidateMonthCache();
   S.qualHistory = null;
 }
@@ -207,6 +208,7 @@ export async function undoAutoSchedule() {
   
   // Invalidate caches
   if (typeof invalidateSwapCache === "function") invalidateSwapCache();
+  // eslint-disable-next-line no-undef
   if (typeof invalidateMonthCache === "function") invalidateMonthCache();
   S.qualHistory = null;
   
