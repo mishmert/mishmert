@@ -30,10 +30,17 @@ test.describe('app smoke', () => {
       pageErrors.push(err.message);
     });
     page.on('requestfailed', (req) => {
-      // Ignore the two external CDN scripts occasionally failing from CI IPs — we
-      // only care about our own origin here.
       const url = req.url();
-      if (url.includes('cdnjs.cloudflare.com') || url.includes('cdn.jsdelivr.net')) return;
+      // Only flag same-origin failures. CI runners can't always reach Google
+      // Fonts, the two CDN scripts (twemoji/supabase-js), or static.cloudflareinsights.com —
+      // all of those are nice-to-have resources that the app degrades gracefully
+      // without. A real app regression (missing /js/*.js, broken /sw.js) would
+      // be served from our own origin and get flagged.
+      const isSameOrigin = url.startsWith('http://127.0.0.1')
+        || url.startsWith('http://localhost')
+        || url.startsWith('https://mishmert.com')
+        || url.startsWith('https://www.mishmert.com');
+      if (!isSameOrigin) return;
       failedRequests.push(`${req.method()} ${url} — ${req.failure()?.errorText}`);
     });
 
