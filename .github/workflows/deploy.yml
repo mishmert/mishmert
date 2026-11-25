@@ -67,29 +67,22 @@ jobs:
                 CNAME *.png _site/
           echo "Artifact contents:" && ls -la _site/
 
-      # Pack and upload the artifact manually with the exact name + content
-      # type deploy-pages@v4 expects. Doing this inline (instead of using
-      # upload-pages-artifact@v3) avoids a race the v3 action keeps losing
-      # against deploy-pages on this project ("No artifacts named
-      # 'github-pages' were found for this workflow run" even though the
-      # upload step reported success).
-      - name: Pack _site into a Pages tar
-        run: |
-          tar \
-            --dereference --hard-dereference \
-            --directory _site \
-            -cvf artifact.tar \
-            --exclude=.git --exclude=.github \
-            .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages
-          path: artifact.tar
-          retention-days: 1
-          if-no-files-found: error
+          path: _site
+
+      # deploy-pages keeps hitting a window where the artifact-metadata query
+      # returns 0 even though the upload step reported success. Sleep briefly
+      # to let the backend index the upload, then let deploy-pages retry
+      # internally via its own `error_count` default.
+      - name: Wait for artifact to propagate
+        run: sleep 20
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          error_count: 20
+          reporting_interval: 3000
+          timeout: 300000
