@@ -123,17 +123,14 @@ test.describe('app globals', () => {
 
   test('S state object is initialized and exposed as window.S', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(1000);
-    const shape = await page.evaluate(() => {
-      if (!window.S) return null;
-      // Pick stable shape fields that should always exist after state.js runs.
-      return {
-        hasView: 'view' in window.S,
-        hasEmployees: Array.isArray(window.S.employees),
-        hasSchedule: typeof window.S.schedule === 'object',
-      };
-    });
-    expect(shape).not.toBeNull();
+    // Wait specifically for state.js's `window.S = S` to execute (up to 10s).
+    // Timeouts vary across projects; WebKit is slower than Chromium.
+    await page.waitForFunction(() => !!window.S, null, { timeout: 10_000 });
+    const shape = await page.evaluate(() => ({
+      hasView: 'view' in window.S,
+      hasEmployees: Array.isArray(window.S.employees),
+      hasSchedule: typeof window.S.schedule === 'object',
+    }));
     expect(shape.hasView).toBe(true);
     expect(shape.hasEmployees).toBe(true);
     expect(shape.hasSchedule).toBe(true);
@@ -244,25 +241,27 @@ test.describe('service worker', () => {
 //  ASSET INTEGRITY
 // ──────────────────────────────────────────────────────────────────────────
 test.describe('asset integrity', () => {
-  test('every js/*.js file referenced by index.html returns 200 and parses', async ({ page }) => {
-    await page.goto('/');
-    // Pull every <script src="js/..."> URL from the page itself so adding a
-    // new one here doesn't require updating this test.
-    const scriptUrls = await page.locator('script[src^="js/"]').evaluateAll((els) =>
-      els.map((e) => /** @type {HTMLScriptElement} */(e).src));
-    expect(scriptUrls.length, 'index.html has no js/*.js references at all').toBeGreaterThan(0);
-    for (const url of scriptUrls) {
-      const resp = await page.request.get(url);
-      expect(resp.status(), `${url} did not return 200`).toBe(200);
+  test('every js/*.js file referenced by index.html returns 200 and parses', async ({ page, request }) => {
+    // Use the HTTP layer directly, not the page — SW registration can trigger
+    // a navigation that invalidates the page's execution context mid-test.
+    const indexResp = await request.get('/');
+    expect(indexResp.status()).toBe(200);
+    const html = await indexResp.text();
+    // Extract every <script src="js/..."> URL from the raw HTML.
+    const srcRegex = /<script\s+src="(js\/[^"]+)"/g;
+    const scriptPaths = [];
+    let m;
+    while ((m = srcRegex.exec(html)) !== null) scriptPaths.push(m[1]);
+    expect(scriptPaths.length, 'index.html has no js/*.js references at all').toBeGreaterThan(0);
+    for (const relPath of scriptPaths) {
+      const resp = await request.get('/' + relPath);
+      expect(resp.status(), `/${relPath} did not return 200`).toBe(200);
       const body = await resp.text();
-      // JavaScript source shouldn't accidentally be served as HTML (what
-      // happens when a bad path hits GitHub Pages 404 and gets the 404 page
-      // as text/html).
-      expect(body.trim().startsWith('<'), `${url} looks like HTML, not JS (404 page?)`).toBe(false);
-      // No stray `import`/`export` keywords in classic scripts — a smoke
-      // test that catches yesterday's ES-Modules regression at the source
-      // file level.
-      expect(/^import\s+\{/m.test(body), `${url} contains top-level 'import { ... }' — ES module leaked into classic script context`).toBe(false);
+      // A JS file shouldn't be served as the 404 HTML page.
+      expect(body.trim().startsWith('<'), `/${relPath} looks like HTML, not JS (404 page?)`).toBe(false);
+      // No stray `import`/`export` at top level — catches yesterday's
+      // ES-Modules regression at the SOURCE FILE level.
+      expect(/^import\s+\{/m.test(body), `/${relPath} contains top-level 'import { ... }' — ES module leaked into classic script context`).toBe(false);
     }
   });
 
