@@ -1,9 +1,14 @@
-name: Deploy source to GitHub Pages
+name: Test and deploy to GitHub Pages
 
-# Minimal no-build workflow: uploads the repo root as-is to GitHub Pages.
-# Restores the pre-Vite behaviour (19 classic <script src="..."> tags served
-# directly from the repo) that worked on mobile, without requiring you to
-# flip the Pages source setting back to "Deploy from a branch".
+# On every push to main:
+#  1. install playwright + browsers (chromium + webkit)
+#  2. spin up a local http server on the repo root
+#  3. run the smoke tests across Desktop Chrome, Desktop Safari, Mobile Safari
+#     (iPhone 14) and Mobile Chrome (Pixel 7)
+#  4. ONLY if the tests pass, publish the repo root to GitHub Pages
+# The test step is the safety net that catches the kind of module-loading
+# breakage that reached production on 2026-11-24. If the suite fails, Pages
+# keeps serving the previous working deploy.
 
 on:
   push:
@@ -20,7 +25,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run smoke tests
+        run: npm test
+        env:
+          CI: '1'
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   deploy:
+    needs: test   # deploy is blocked unless every test project passes
     runs-on: ubuntu-latest
     environment:
       name: github-pages
