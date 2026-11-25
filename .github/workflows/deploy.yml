@@ -1,14 +1,13 @@
 name: Test and deploy to GitHub Pages
 
-# On every push to main:
-#  1. install playwright + browsers (chromium + webkit)
-#  2. spin up a local http server on the repo root
-#  3. run the smoke tests across Desktop Chrome, Desktop Safari, Mobile Safari
-#     (iPhone 14) and Mobile Chrome (Pixel 7)
-#  4. ONLY if the tests pass, publish the repo root to GitHub Pages
-# The test step is the safety net that catches the kind of module-loading
-# breakage that reached production on 2026-11-24. If the suite fails, Pages
-# keeps serving the previous working deploy.
+# Single-job workflow: tests and deploy share one runner so there is no
+# cross-job artifact handoff (the two-job variant hit a race between
+# upload-pages-artifact@v3 and deploy-pages@v4 where the deploy could not
+# find the artifact the previous step had just uploaded).
+#
+# Order: checkout → install → playwright → tests → upload → deploy.
+# If the test step fails, every later step is skipped and GitHub Pages
+# keeps serving the previous good deploy.
 
 on:
   push:
@@ -25,8 +24,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  test-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,19 +57,20 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  deploy:
-    needs: test   # deploy is blocked unless every test project passes
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
+      # Pages artifact must NOT include node_modules / playwright caches / the
+      # tests folder itself — those bloat the artifact and are not needed at
+      # runtime. Copy only the files the live site actually serves.
+      - name: Stage artifact contents
+        run: |
+          mkdir -p _site
+          cp -r index.html privacy.html styles.css sw.js manifest.json js/ \
+                CNAME *.png _site/
+          echo "Artifact contents:" && ls -la _site/
 
-      - name: Upload source as Pages artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
