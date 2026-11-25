@@ -480,6 +480,25 @@ textarea:focus {
     0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   transform: translateY(-1px);
 }
+/* Narrow desktop (tablet-landscape / small laptop): managers have 11 nav
+   tabs that don't fit between 769px and 1199px. Rather than hide them
+   behind an invisible horizontal scroll, we collapse each tab to its icon
+   and surface the Hebrew label as a hover tooltip (title attr). Mobile
+   (<=768px) already switches to the bottom nav, so no change needed there. */
+@media (min-width: 769px) and (max-width: 1199px) {
+  .nav {
+    gap: 2px;
+  }
+  .nav-btn {
+    padding: 8px 10px;
+  }
+  .nav-btn .nav-label {
+    display: none;
+  }
+  .nav-btn > span[style*="font-size:15px"] {
+    font-size: 18px !important;
+  }
+}
 .badge {
   background: #ef4444;
   color: white;

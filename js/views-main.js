@@ -171,6 +171,7 @@ export function viewHeader() {
             "button",
             {
               class: "nav-btn" + (S.view === t.id ? " active" : ""),
+              title: t.label, // tooltip when label is hidden on narrow desktops
               onclick: () => {
                 haptic(8); // subtle click feedback on tap
                 if (t.id === "swaps_nav") {
@@ -200,7 +201,7 @@ export function viewHeader() {
                 ? e("span", { class: "badge " + (t.badgeClass || "") }, String(t.badge))
                 : null,
               e("span", { style: "font-size:15px;line-height:1" }, t.icon),
-              e("span", {}, t.label),
+              e("span", { class: "nav-label" }, t.label),
             ]
           )
         )
