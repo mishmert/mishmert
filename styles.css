@@ -501,6 +501,19 @@ textarea:focus {
   .nav-btn > span[style*="font-size:15px"] {
     font-size: 18px !important;
   }
+  /* Also compact the left side (user area) so the whole header fits —
+     otherwise the user-name, role label and full logout button steal the
+     space the nav would use. The mobile breakpoint already does this
+     for <=768px; extend the same compaction up through 1499px. */
+  .user-name,
+  .user-role-label {
+    display: none;
+  }
+  .btn-logout {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
 }
 .badge {
   background: #ef4444;
