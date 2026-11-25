@@ -19,8 +19,9 @@ import { S } from './state.js';
 import { getWeekDates, toast, uiConfirm } from './utils.js';
 import { render } from './main.js';
 import { sb } from './sb.js';
-import { invalidateSwapCache } from './views-main.js';
+
 import { logAction } from './audit.js';
+import { invalidateSwapCache } from './memo.js';
 export const MAX_HISTORY = 20;
 
 export function _snapshotCurrentSchedule(label) {

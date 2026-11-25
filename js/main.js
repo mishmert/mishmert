@@ -32,9 +32,30 @@ import { loadAvailSubmissions, loadEmployees, loadJoinRequests, loadSchedule, lo
 import { $, _closeDialog, div, e, getWeekDates, israelNow, toast } from './utils.js';
 import { viewLoading, viewLogin, viewMfaChallenge, viewMfaEnroll } from './views-auth.js';
 import { checkAuth, viewPasswordReset } from './router.js';
-import { viewConstraintsModal, viewEmpView, viewEmployees, viewExportModal, viewHeader, viewHome, viewPreviewSelectModal, viewPublishModal, viewSchedule, viewSwaps, viewVacations } from './views-main.js';
 import { isManager } from './roles.js';
-import { viewAnalytics, viewCalendar, viewEmpSettings, viewManagerBlocks, viewQualifications, viewSettings } from './views-secondary.js';
+// Authenticated-view modules are lazy-loaded via view-registry.js — they are
+// about 2/3 of the whole bundle and nothing shown pre-login references them.
+// These thin wrappers keep every call site below unchanged while routing each
+// call through the registry cache, which preloadAuthenticatedViews() populates
+// early in loadAll().
+import { getView } from './view-registry.js';
+const viewConstraintsModal   = (...a) => getView('viewConstraintsModal')(...a);
+const viewEmpView            = (...a) => getView('viewEmpView')(...a);
+const viewEmployees          = (...a) => getView('viewEmployees')(...a);
+const viewExportModal        = (...a) => getView('viewExportModal')(...a);
+const viewHeader             = (...a) => getView('viewHeader')(...a);
+const viewHome               = (...a) => getView('viewHome')(...a);
+const viewPreviewSelectModal = (...a) => getView('viewPreviewSelectModal')(...a);
+const viewPublishModal       = (...a) => getView('viewPublishModal')(...a);
+const viewSchedule           = (...a) => getView('viewSchedule')(...a);
+const viewSwaps              = (...a) => getView('viewSwaps')(...a);
+const viewVacations          = (...a) => getView('viewVacations')(...a);
+const viewAnalytics          = (...a) => getView('viewAnalytics')(...a);
+const viewCalendar           = (...a) => getView('viewCalendar')(...a);
+const viewEmpSettings        = (...a) => getView('viewEmpSettings')(...a);
+const viewManagerBlocks      = (...a) => getView('viewManagerBlocks')(...a);
+const viewQualifications     = (...a) => getView('viewQualifications')(...a);
+const viewSettings           = (...a) => getView('viewSettings')(...a);
 import { filterNavByFeatures, fmtDate } from './helpers.js';
 import { DAYS } from './constants.js';
 import { sendEmail } from './audit.js';

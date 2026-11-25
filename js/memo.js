@@ -39,3 +39,9 @@ export function getEmp(id) {
   }
   return _empByIdCache.map[id];
 }
+
+// Swap-week schedule cache (shared between swap views, audit, and history).
+export const _swapWeekCache = {};
+export function invalidateSwapCache() {
+  for (const key in _swapWeekCache) delete _swapWeekCache[key];
+}

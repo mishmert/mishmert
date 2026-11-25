@@ -35,10 +35,19 @@ import { checkAutoReminder, isUserBusy, render, startAutoRefresh } from './main.
 import { fmtYMD, friendlyError, getWeekDates, shiftDurationHours, toast } from './utils.js';
 import { SHIFTS, SHIFT_BY_ID, SHIFT_LABELS, WEEKEND_SHIFTS, getShiftsForDate } from './constants.js';
 import { applyDeepLink } from './router.js';
+import { preloadAuthenticatedViews } from './view-registry.js';
 import { isManager } from './roles.js';
 import { _deepLinkUrl } from './email.js';
 export async function loadAll(user) {
   S.user = user;
+
+  // Kick off the lazy-loaded authenticated-view chunks in parallel with the
+  // MFA check and the profile load below. By the time render() needs any of
+  // them, they'll be in memory. No await here — if the MFA gate finishes
+  // first and S.view transitions to the authenticated app, render() will
+  // find the chunks ready; if not, it'll find the "טוען תצוגה..." placeholder
+  // for a few hundred ms and then rerender.
+  preloadAuthenticatedViews().catch(err => console.warn("view preload failed:", err));
 
   // ═══ 2FA gate ═══
   // Enforced for all users. Flow:

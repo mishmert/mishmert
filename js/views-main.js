@@ -37,7 +37,7 @@ import { handleLogout, logAction, saveScheduleToDB, sendEmail } from './audit.js
 import { BLOCK_SHIFTS, DAYS, DAY_SHIFT_OVERRIDES, SHIFTS, SHIFT_BY_ID, WEEKEND_SHIFTS, ec, getHoliday, getShiftsForDate } from './constants.js';
 import { getActiveEmpId, getActiveProfile, isManager } from './roles.js';
 import { sb } from './sb.js';
-import { getEmp, invalidateMemo } from './memo.js';
+import { _swapWeekCache, getEmp, invalidateMemo, invalidateSwapCache } from './memo.js';
 import { loadEmployees, loadInvitations, loadMyMonthData, loadSchedule, loadSwapRequests, loadVacations } from './data.js';
 import { runSmartSchedule } from './scheduler.js';
 import { canRedo, canUndo, pushScheduleHistory, redoSchedule, undoSchedule } from './history.js';
@@ -2092,7 +2092,6 @@ export async function processPeerDecision(swap, isApproved) {
 }
 
 // Cache for schedule data loaded for swap weeks (other than current)
-export const _swapWeekCache = {};  // { weekStartStr: { date: { shift: [empIds] } } }
 
 export async function loadScheduleForSwapWeek(weekOffset) {
   const wd = getWeekDates(weekOffset);
@@ -2135,11 +2134,6 @@ export async function loadScheduleForSwapWeek(weekOffset) {
     console.warn("Could not load swap week:", err);
     return {};
   }
-}
-
-// Invalidate swap cache when schedule changes
-export function invalidateSwapCache() {
-  for (const key in _swapWeekCache) delete _swapWeekCache[key];
 }
 
 export function viewSwaps(forceEmployee) {
