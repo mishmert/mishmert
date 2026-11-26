@@ -628,12 +628,12 @@ export function startAutoRefresh() {
 }
 
 // ═══ Session timeout — force re-login (and 2FA) after idle inactivity ═══
-// Reasoning: Supabase sessions last for hours/days by default. We still want a
-// forced re-auth so a shared/stolen device can't keep the window open, but 30 min
-// was too aggressive for day-to-day admin work (owner request 2026-11-26). 2 hours
-// balances security with the practical pattern of leaving the tab open while
-// working in other windows.
-export const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+// Owner sets this. Was 30 min (SOC-grade), raised to 2h, then to 4 days per
+// owner request 2026-11-26 — this app runs on his and his team's personal
+// devices and the frequent re-auth was more friction than value. Supabase's
+// own refresh-token default is 7 days, so 4 days fits comfortably inside the
+// SDK's auto-refresh window.
+export const SESSION_TIMEOUT_MS = 4 * 24 * 60 * 60 * 1000;
 export let _lastActivityMs = Date.now();
 export let _sessionTimeoutTimer = null;
 export function bumpActivity() {
