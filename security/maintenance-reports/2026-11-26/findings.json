@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-26",
+  "agent": "weekly-maintenance",
+  "action_items": [
+    {
+      "id": "MAINT-2026-11-26-001",
+      "title": "Two admins still in MFA grace (galpeer3, elitehadaroz)",
+      "ref": "MSH-202646-001 follow-up",
+      "severity": "MED",
+      "owner": "razbarhoum"
+    },
+    {
+      "id": "MAINT-2026-11-26-002",
+      "title": "Revoke EXECUTE on public.prevent_self_mfa_grace_extension() from anon, authenticated",
+      "detail": "Trigger function unnecessarily exposed as RPC via /rest/v1/rpc/prevent_self_mfa_grace_extension. Added 2026-11-25 as part of MSH-202646-001 fix.",
+      "severity": "LOW",
+      "owner": "razbarhoum"
+    },
+    {
+      "id": "MAINT-2026-11-26-003",
+      "title": "Vite major update available (7.3.8 -> 8.4.0)",
+      "detail": "Not included in auto-PR. Review breaking changes.",
+      "severity": "LOW",
+      "owner": "razbarhoum"
+    }
+  ],
+  "stats": {
+    "ci_runs_7d_total": 59,
+    "ci_runs_7d_success": 50,
+    "ci_runs_7d_failure": 9,
+    "ci_success_pct": 85,
+    "npm_vulnerabilities": 0,
+    "npm_outdated_total": 2,
+    "npm_outdated_patch_safe": 1,
+    "supabase_security_advisors": 3,
+    "supabase_performance_advisors": 1,
+    "supabase_security_findings_total": 17,
+    "supabase_performance_findings_total": 20,
+    "stale_pending_vacations": 0,
+    "stale_pending_swaps": 0,
+    "users_in_mfa_grace_over_3d": 2,
+    "last_deploy_at": "2026-11-25T15:22:45Z",
+    "last_deploy_sha": "737091dc",
+    "head_sha": "737091dc",
+    "deploy_fresh": true
+  },
+  "baseline": {
+    "csp_meta": "base-uri 'self'; form-action 'self'; object-src 'none';",
+    "csp_cf_header": "NOT_VERIFIED_PROXY_BLOCKED",
+    "edge_functions": [
+      { "slug": "rapid-action", "verify_jwt": false, "version": 47 },
+      { "slug": "admin---reset---mfa", "verify_jwt": true, "version": 4 },
+      { "slug": "admin-reset-mfa", "verify_jwt": true, "version": 3 }
+    ]
+  },
+  "auto_fixes": {
+    "pr_opened": "chore/deps-weekly-2026-11-26",
+    "sentry_resolved": 0
+  },
+  "skipped": [
+    {
+      "step": "sentry",
+      "reason": "No SENTRY_AUTH_TOKEN available in agent env"
+    },
+    {
+      "step": "csp_live_header",
+      "reason": "mishmert.com blocked at agent network proxy"
+    }
+  ]
+}
