@@ -627,10 +627,13 @@ export function startAutoRefresh() {
   }, 30000);
 }
 
-// ═══ Session timeout — force re-login (and 2FA) after 30 min of inactivity ═══
-// Reasoning: Supabase sessions last for hours/days by default. For a security-sensitive
-// SOC environment, require password + 2FA every 30 minutes of no interaction.
-export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+// ═══ Session timeout — force re-login (and 2FA) after idle inactivity ═══
+// Reasoning: Supabase sessions last for hours/days by default. We still want a
+// forced re-auth so a shared/stolen device can't keep the window open, but 30 min
+// was too aggressive for day-to-day admin work (owner request 2026-11-26). 2 hours
+// balances security with the practical pattern of leaving the tab open while
+// working in other windows.
+export const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 export let _lastActivityMs = Date.now();
 export let _sessionTimeoutTimer = null;
 export function bumpActivity() {
